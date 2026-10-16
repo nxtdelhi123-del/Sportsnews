@@ -192,3 +192,137 @@ test('API: /api/match returns codes and validates input', async () => {
   await match(req({ l: 'soccer/eng.1', id: '../../x' }), res);
   assert.equal(res.statusCode, 400);
 });
+
+// ---- global coverage ----
+import { normalizeSofa } from '../lib/sofa.js';
+import { mergeSources } from '../lib/feeds.js';
+import { cricketDetails } from '../lib/cricket.js';
+import { summaryDetails } from '../lib/espn.js';
+import { resultLine, newsPoster } from '../public/js/format.js';
+import { clearMemo } from '../lib/http.js';
+
+test('normalizes Sofascore football with live minute, country and colours', () => {
+  const now = Date.parse('2026-10-17T15:21:30Z');
+  const m = normalizeSofa(fx.sofaFootballLive.events[0], 'football', now);
+  assert.equal(m.sport, 'soccer');
+  assert.equal(m.league.path, 'sofa/football');
+  assert.equal(m.league.country, 'England');
+  assert.equal(m.status.state, 'in');
+  assert.equal(m.status.clock, "67'");
+  assert.equal(m.home.score, '2');
+  assert.equal(m.home.color, '#cc0000');
+  assert.match(m.home.logo, /img\.sofascore\.com\/api\/v1\/team\/42\/image/);
+  assert.equal(m.note, 'Round 8');
+});
+
+test('Sofascore tennis keeps sets and winner', () => {
+  const m = normalizeSofa(fx.sofaTennisDay.events[0], 'tennis', NOW);
+  assert.equal(m.status.state, 'post');
+  assert.deepEqual(m.home.linescores, ['6', '7']);
+  assert.equal(m.home.winner, true);
+  assert.equal(resultLine(m), 'Sinner J. beat Alcaraz C. 2–0');
+});
+
+test('drops Sofascore duplicates of ESPN fixtures, keeps the rest', () => {
+  const espn = normalizeScoreboard(fx.soccerScoreboard, EPL, NOW);
+  const sofa = fx.sofaFootballLive.events.map((e) => normalizeSofa(e, 'football', NOW));
+  const merged = mergeSources(espn, sofa);
+  assert.equal(merged.length, espn.length + 1);
+  assert.ok(merged.some((m) => m.home.name === 'Mohun Bagan SG'));
+  assert.equal(merged.filter((m) => /Arsenal/.test(m.name)).length, 1);
+});
+
+test('ESPN summary becomes rich details', () => {
+  const [m] = normalizeScoreboard(fx.soccerScoreboard, EPL, NOW);
+  const d = summaryDetails(fx.espnSummary, m);
+  assert.deepEqual(d.stats[0], { label: 'Possession', home: '58%', away: '42%' });
+  assert.equal(d.attendance, 60123);
+  assert.deepEqual(d.officials, ['Referee: Michael Oliver']);
+  assert.equal(d.lineups[0].formation, '4-3-3');
+  assert.equal(m.headline, 'Arsenal edge Chelsea in derby thriller');
+});
+
+test('cricket details: innings highlights, toss, player of the match', () => {
+  const d = cricketDetails(fx.cricinfoDetails);
+  assert.equal(d.innings[0].total, '301/7 (50 ov)');
+  assert.deepEqual(d.innings[0].topBatters, ['Virat Kohli 112 (98)', 'Rohit Sharma 45 (40)']);
+  assert.deepEqual(d.innings[0].topBowlers, ['Pat Cummins 3/55 (10)']);
+  assert.equal(d.toss, 'India won the toss and chose to bat');
+  assert.equal(d.playerOfTheMatch, 'Virat Kohli');
+});
+
+test('AI poster brief has every detail and a ready prompt', () => {
+  const [m] = normalizeScoreboard(fx.soccerScoreboard, EPL, NOW);
+  m.details = summaryDetails(fx.espnSummary, m);
+  m.home.color = '#EF0107';
+  const p = formatMatch(m, 'poster', { siteUrl: 'https://nxt.example', timeZone: 'Asia/Kolkata' });
+  for (const want of [/SPORT: Football ⚽/, /COMPETITION: Premier League/, /STATUS: LIVE · 67'/, /19:30 GMT\+5:30\s+\|\s+.*14:00 UTC/, /VENUE: Emirates Stadium, London, England \(capacity 60,704\) · attendance 60,123/, /HOME: Arsenal \(ARS\) — 2/, /RESULT: Live: Arsenal lead Chelsea 2–1/, /KEY MOMENTS:\n• 23' Goal — Bukayo Saka/, /Possession: 58% – 42%/, /LINE-UPS:\nArsenal \(4-3-3\): 22 David Raya/, /TEAM COLOURS: Arsenal: #EF0107/, /PROMPT FOR AI/, /live score update graphic/, /NXT Sports/]) {
+    assert.match(p, want);
+  }
+  const pre = normalizeScoreboard(fx.soccerScoreboard, EPL, NOW)[1];
+  assert.match(formatMatch(pre, 'poster', {}), /RESULT: Upcoming: Liverpool vs Everton[\s\S]*match-day preview poster/);
+});
+
+test('news poster copy', () => {
+  const p = newsPoster({ sport: 'cricket', title: 'Kohli hits 50th ODI hundred', summary: 'Record day.', source: 'BBC', link: 'https://x', published: '2026-10-16T10:00:00Z' });
+  assert.match(p, /SPORT: Cricket 🏏\nHEADLINE: Kohli hits 50th ODI hundred\nSUMMARY: Record day\./);
+  assert.match(p, /BREAKING CRICKET NEWS/);
+});
+
+function mockFetchGlobal() {
+  clearMemo();
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    const json = (b) => new Response(JSON.stringify(b), { headers: { 'content-type': 'application/json' } });
+    if (u.includes('soccer/eng.1/scoreboard')) return json(fx.soccerScoreboard);
+    if (u.includes('soccer/eng.1/summary')) return json(fx.espnSummary);
+    if (u.includes('sofascore.com/api/v1/sport/football/events/live')) return json(fx.sofaFootballLive);
+    if (u.includes('sofascore.com/api/v1/sport/tennis/scheduled-events')) return json({ events: fx.sofaTennisDay.events.map((e) => ({ ...e, startTimestamp: Math.floor(Date.now() / 1000) - 3600 })) });
+    if (u.includes('sofascore.com/api/v1/sport/')) return json({ events: [] });
+    if (u.includes('/event/12345678/incidents')) return json(fx.sofaIncidents);
+    if (u.includes('/event/12345678/statistics')) return json(fx.sofaStats);
+    if (u.includes('/event/12345678/lineups')) return json(fx.sofaLineups);
+    if (u.includes('/event/12345678')) return json(fx.sofaEventDetail);
+    if (u.includes('hs-consumer-api.espncricinfo.com/v1/pages/matches/current')) return json(fx.cricinfoCurrent);
+    if (u.includes('hs-consumer-api.espncricinfo.com/v1/pages/match/details')) return json(fx.cricinfoDetails);
+    return new Response('nope', { status: 404 });
+  };
+}
+
+test('API: per-sport scores include worldwide matches', async () => {
+  mockFetchGlobal();
+  const { default: scores } = await import('../api/scores.js?global');
+  let res = mockRes();
+  await scores({ query: { sport: 'tennis' }, headers: {} }, res);
+  let data = JSON.parse(res.body);
+  assert.equal(res.statusCode, 200);
+  assert.ok(data.matches.some((m) => m.source === 'sofascore' && m.home.name === 'Sinner J.'));
+
+  res = mockRes();
+  await scores({ query: { sport: 'nope' }, headers: {} }, res);
+  assert.equal(res.statusCode, 400);
+});
+
+test('API: match details for Sofascore and cricket in poster format', async () => {
+  mockFetchGlobal();
+  const { default: match } = await import('../api/match.js?global');
+  const req = (q) => ({ query: q, headers: { host: 'nxt.example' } });
+
+  let res = mockRes();
+  await match(req({ l: 'sofa/football', id: '12345678', format: 'poster' }), res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, /VENUE: Emirates Stadium, London, England \(capacity 60,704\)/);
+  assert.match(res.body, /• 23' Goal — Bukayo Saka \(assist Martin Ødegaard\) \(Arsenal\) \[1-0\]/);
+  assert.match(res.body, /Ball possession: 58% – 42%/);
+  assert.match(res.body, /OFFICIALS: Referee: Michael Oliver \(England\)/);
+  assert.match(res.body, /COACHES: Arsenal: Mikel Arteta \| Chelsea: Enzo Maresca/);
+
+  res = mockRes();
+  await match(req({ l: 'cricket', id: '1449900', format: 'poster' }), res);
+  assert.match(res.body, /TOSS: India won the toss and chose to bat/);
+  assert.match(res.body, /PLAYER OF THE MATCH: Virat Kohli/);
+
+  res = mockRes();
+  await match(req({ l: 'sofa/evil', id: '1' }), res);
+  assert.equal(res.statusCode, 400);
+});

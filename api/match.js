@@ -1,46 +1,39 @@
-import { LEAGUE_BY_PATH } from '../lib/sources.js';
-import { fetchLeague, normalizeCompetition } from '../lib/espn.js';
-import { getScores } from '../lib/feeds.js';
-import { fetchWithTimeout, memoize, setCache, sendJSON, siteUrl } from '../lib/http.js';
-import { formatMatch } from '../public/js/format.js';
+import { LEAGUE_BY_PATH, SOFA_SLUGS } from '../lib/sources.js';
+import { espnMatch } from '../lib/espn.js';
+import { sofaMatch } from '../lib/sofa.js';
+import { cricketMatch, fetchCricket } from '../lib/cricket.js';
+import { memoize, setCache, sendJSON, siteUrl, slim } from '../lib/http.js';
+import { formatMatch, FORMATS } from '../public/js/format.js';
 
-const TYPES = { text: 'text/plain', markdown: 'text/markdown', embed: 'text/html', api: 'text/plain' };
+const TYPES = { text: 'text/plain', markdown: 'text/markdown', embed: 'text/html', api: 'text/plain', poster: 'text/plain' };
+const FORMAT_IDS = new Set(FORMATS.map((f) => f.id));
 
-async function findEspn(league, id) {
-  const list = await memoize(`league:${league.path}`, 60_000, () => fetchLeague(league));
-  const hit = list.find((m) => m.id === id || m.eventId === id);
-  if (hit) return hit;
-  // Not on the current scoreboard (older/future match): use the summary endpoint.
-  const sum = await fetchWithTimeout(`https://site.api.espn.com/apis/site/v2/sports/${league.path}/summary?event=${id}`);
-  const comp = sum?.header?.competitions?.[0];
-  if (!comp) return null;
-  const ev = { id, name: '', links: sum.header.links, competitions: [comp] };
-  const m = normalizeCompetition(ev, { ...comp, venue: comp.venue || sum.gameInfo?.venue }, league);
-  if (m.kind === 'versus' && m.events.length === 0 && Array.isArray(sum.keyEvents)) {
-    m.events = sum.keyEvents
-      .filter((k) => k.scoringPlay || /card/i.test(k.type?.text || ''))
-      .map((k) => ({ minute: k.clock?.displayValue || '', type: k.type?.text || '', player: k.participants?.[0]?.athlete?.displayName || '', team: k.team?.abbreviation || k.team?.displayName || '' }));
-  }
-  return m;
+// Full details for one match: everything the copy / poster formats use.
+export function loadMatch(l, id) {
+  return memoize(`match:${l}:${id}`, 60_000, async () => {
+    if (l === 'cricket') {
+      const base = (await fetchCricket()).find((m) => m.id === id);
+      return base ? cricketMatch(base) : null;
+    }
+    if (l.startsWith('sofa/')) return sofaMatch(l.slice(5), id);
+    return espnMatch(LEAGUE_BY_PATH.get(l), id);
+  });
 }
+
+const validLeague = (l) => l === 'cricket' || LEAGUE_BY_PATH.has(l) || (l.startsWith('sofa/') && SOFA_SLUGS.has(l.slice(5)));
 
 export default async function handler(req, res) {
   const { l = '', id = '', format = 'json', tz } = req.query || {};
   if (!/^[\w.-]{1,40}$/.test(id)) return sendJSON(res, 400, { error: 'Invalid or missing id' });
+  if (!validLeague(l)) return sendJSON(res, 400, { error: 'Unknown league path', hint: 'Use the "l" value shown in the match API link' });
+  if (format !== 'json' && !FORMAT_IDS.has(format)) return sendJSON(res, 400, { error: 'Unknown format', formats: [...FORMAT_IDS] });
 
   try {
-    let match = null;
-    if (l === 'cricket') {
-      match = (await getScores()).matches.find((m) => m.sport === 'cricket' && m.id === id) || null;
-    } else {
-      const league = LEAGUE_BY_PATH.get(l);
-      if (!league) return sendJSON(res, 400, { error: 'Unknown league path', hint: 'Use the "l" value shown in the match API link' });
-      match = await findEspn(league, id);
-    }
+    const match = await loadMatch(l, id);
     if (!match) return sendJSON(res, 404, { error: 'Match not found' });
 
     setCache(res, match.status.state === 'in' ? 60 : undefined);
-    if (format === 'json') return sendJSON(res, 200, match);
+    if (format === 'json') return sendJSON(res, 200, slim(match));
     let timeZone;
     try {
       timeZone = tz ? new Intl.DateTimeFormat('en', { timeZone: tz }).resolvedOptions().timeZone : undefined;

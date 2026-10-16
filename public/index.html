@@ -70,12 +70,13 @@
             <button data-state="post">Results</button>
           </div>
           <input id="search" type="search" placeholder="Search team, league, venue…" autocomplete="off">
-          <label class="fmt-pick">Copy as
+          <label class="fmt-pick" title="What the Copy details button copies">Copy as
             <select id="defaultFormat"></select>
           </label>
-          <button id="copyAll" class="btn ghost" type="button" title="Copy every match shown">Copy all shown</button>
+          <button id="copyAll" class="btn ghost" type="button" title="Copy every match shown (up to 300)">Copy all shown</button>
         </div>
       </div>
+      <p id="scoresHint" class="hint"></p>
       <div id="matches" class="matches"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
     </section>
 
@@ -89,7 +90,7 @@
 
   <footer class="footer">
     <p class="footer-brand"><picture><source srcset="/img/nxt-mark-dark.png" media="(prefers-color-scheme: dark)"><img src="/img/nxt-mark.png" alt="" width="51" height="30"></picture> <strong>NXT Sports</strong> · Global Sports Newsroom</p>
-    <p>Data: ESPN, ESPNcricinfo, BBC Sport, The Guardian, Sky Sports, Google News and more. Updated every 10 minutes. Every match has a copy-ready <code>text</code>, <code>markdown</code>, <code>json</code>, <code>embed</code> and live <code>/api/match</code> code.</p>
+    <p>Data: Sofascore, ESPN, ESPNcricinfo, BBC Sport, The Guardian, Sky Sports, Google News and more. Updated every 10 minutes. Every match has a one-tap <b>Copy details</b> button: full match info plus a ready-made prompt for AI posters and videos.</p>
     <p id="sourceStatus" class="muted"></p>
   </footer>
 
@@ -102,7 +103,7 @@
     <pre id="codeBox" class="code" tabindex="0"></pre>
     <div class="dialog-actions">
       <span id="dialogHint" class="muted"></span>
-      <button id="dialogCopy" class="btn" type="button">Copy code</button>
+      <button id="dialogCopy" class="btn" type="button">⧉ Copy</button>
     </div>
   </dialog>
 

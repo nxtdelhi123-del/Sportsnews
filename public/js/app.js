@@ -1,21 +1,25 @@
-import { SPORTS, FORMATS, sportOf, statusLabel, formatMatch, apiUrl } from './format.js';
+import { SPORTS, FORMATS, NEWS_ONLY, sportOf, statusLabel, formatMatch, newsPoster, apiUrl } from './format.js';
 
 const REFRESH_MS = 10 * 60_000;
 const SITE = location.origin;
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const CHUNK = 60; // cards rendered per scroll step
 
 const $ = (sel) => document.querySelector(sel);
 const state = {
-  matches: [],
+  datasets: new Map(), // sport → { matches, updatedAt, nextUpdateAt, sources, live }
+  loading: new Set(),
   news: [],
-  sport: 'all',
+  sport: store('sport') || 'all',
   status: 'all',
   query: '',
-  format: store('fmt') || 'text',
+  format: store('fmt2') || 'poster',
   updatedAt: null,
   nextAt: null,
   byKey: new Map(),
+  details: new Map(), // key → { at, promise }
 };
+if (!SPORTS[state.sport] && state.sport !== 'all') state.sport = 'all';
 
 function store(k, v) {
   try {
@@ -29,6 +33,7 @@ function store(k, v) {
 const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const safeUrl = (u) => (/^https?:\/\//i.test(u || '') ? u : '');
 const keyOf = (m) => `${m.league.path}:${m.id}`;
+const groupName = (m) => (m.league.country ? `${m.league.country} · ${m.league.name}` : m.league.name);
 
 function timeAgo(iso) {
   const t = Date.parse(iso);
@@ -54,31 +59,47 @@ async function getJSON(url) {
   return res.json();
 }
 
+const current = () => state.datasets.get(state.sport);
+const stale = (ds) => !ds || Date.now() > Date.parse(ds.nextUpdateAt || 0) + 5000;
+
+async function loadSport(sport, { bust = false, quiet = false } = {}) {
+  if (state.loading.has(sport)) return;
+  state.loading.add(sport);
+  if (!quiet && sport === state.sport) renderMatches();
+  try {
+    const q = new URLSearchParams(sport === 'all' ? {} : { sport });
+    if (bust) q.set('t', Date.now());
+    const data = await getJSON(`/api/scores${q.size ? '?' + q : ''}`);
+    state.datasets.set(sport, data);
+  } catch {
+    if (!state.datasets.has(sport) && sport === state.sport) $('#matches').innerHTML = `<div class="empty">Couldn't load ${sport === 'all' ? 'scores' : sportOf(sport).label + ' scores'} right now. Retrying soon…</div>`;
+  } finally {
+    state.loading.delete(sport);
+  }
+  if (sport === state.sport || sport === 'all') render();
+}
+
+async function loadNews(bust) {
+  try {
+    const data = await getJSON(`/api/news${bust ? `?t=${Date.now()}` : ''}`);
+    state.news = data.items || [];
+    state.newsSources = data.sources;
+    state.newsAt = data.updatedAt;
+  } catch {
+    if (!state.news.length) $('#news').innerHTML = `<div class="empty">Couldn't load headlines right now.</div>`;
+  }
+  renderNews();
+  renderTicker();
+  renderStatus();
+}
+
 async function load({ bust = false } = {}) {
-  const q = bust ? `?t=${Date.now()}` : '';
   $('#refreshBtn').disabled = true;
-  $('#refreshBtn').classList.add('spinning');
-  const [scores, news] = await Promise.allSettled([getJSON(`/api/scores${q}`), getJSON(`/api/news${q}`)]);
-  if (scores.status === 'fulfilled') {
-    state.matches = scores.value.matches || [];
-    state.byKey = new Map(state.matches.map((m) => [keyOf(m), m]));
-    state.updatedAt = scores.value.updatedAt;
-    state.nextAt = scores.value.nextUpdateAt;
-    state.scoreSources = scores.value.sources;
-  } else if (!state.matches.length) {
-    $('#matches').innerHTML = `<div class="empty">Couldn't load scores right now. Retrying soon…</div>`;
-  }
-  if (news.status === 'fulfilled') {
-    state.news = news.value.items || [];
-    state.newsSources = news.value.sources;
-    state.updatedAt ||= news.value.updatedAt;
-    state.nextAt ||= news.value.nextUpdateAt;
-  } else if (!state.news.length) {
-    $('#news').innerHTML = `<div class="empty">Couldn't load headlines right now.</div>`;
-  }
+  const jobs = [loadSport('all', { bust, quiet: state.sport !== 'all' }), loadNews(bust)];
+  if (state.sport !== 'all' && !NEWS_ONLY.has(state.sport)) jobs.push(loadSport(state.sport, { bust, quiet: true }));
+  await Promise.allSettled(jobs);
   $('#refreshBtn').disabled = false;
-  $('#refreshBtn').classList.remove('spinning');
-  render();
+  state.details.clear();
   schedule();
 }
 
@@ -86,15 +107,16 @@ async function load({ bust = false } = {}) {
 let timer;
 function schedule() {
   clearTimeout(timer);
-  const step = REFRESH_MS;
-  const next = Math.floor(Date.now() / step) * step + step + 8000;
+  const next = Math.floor(Date.now() / REFRESH_MS) * REFRESH_MS + REFRESH_MS + 8000;
   state.nextAt = new Date(next).toISOString();
   timer = setTimeout(() => load(), next - Date.now());
 }
 
 setInterval(tickClock, 1000);
 function tickClock() {
-  if (state.updatedAt) $('#updated').textContent = `Updated ${new Date(state.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  const ds = current() || state.datasets.get('all');
+  const at = ds?.updatedAt || state.newsAt;
+  if (at) $('#updated').textContent = `Updated ${new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   if (state.nextAt) {
     const s = Math.max(0, Math.round((Date.parse(state.nextAt) - Date.now()) / 1000));
     $('#countdown').textContent = `next in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -115,40 +137,43 @@ function render() {
   tickClock();
 }
 
-function counts() {
-  const c = { all: state.matches.length + state.news.length };
-  for (const m of state.matches) c[m.sport] = (c[m.sport] || 0) + 1;
-  for (const n of state.news) c[n.sport] = (c[n.sport] || 0) + 1;
-  return c;
-}
-
 function renderChips() {
-  const c = counts();
-  const live = state.matches.filter((m) => m.status.state === 'in').length;
-  const chips = [['all', '🌍', 'All sports', c.all], ...Object.entries(SPORTS).filter(([k]) => c[k]).map(([k, v]) => [k, v.emoji, v.label, c[k]])];
+  const live = state.datasets.get('all')?.live || {};
+  const newsCount = {};
+  for (const n of state.news) newsCount[n.sport] = (newsCount[n.sport] || 0) + 1;
+  const totalLive = Object.values(live).reduce((a, b) => a + b, 0);
+  const chip = (k, emoji, label, liveN) =>
+    `<button class="chip${state.sport === k ? ' active' : ''}" data-sport="${k}"><span>${emoji}</span>${esc(label)}${liveN ? `<small class="live-n" title="${liveN} live">${liveN}</small>` : ''}</button>`;
   $('#sportChips').innerHTML =
-    chips.map(([k, e, l, n]) => `<button class="chip${state.sport === k ? ' active' : ''}" data-sport="${k}"><span>${e}</span>${esc(l)}<small>${n}</small></button>`).join('') +
-    (live ? `<span class="live-pill"><i></i>${live} live now</span>` : '');
+    chip('all', '🌍', 'All sports', totalLive) +
+    Object.entries(SPORTS)
+      .filter(([k]) => k !== 'other' || newsCount.other)
+      .map(([k, v]) => chip(k, v.emoji, v.label, live[k]))
+      .join('') +
+    (totalLive ? `<span class="live-pill"><i></i>${totalLive} live now</span>` : '');
 }
 
 function visibleMatches() {
+  const ds = current();
+  if (!ds) return [];
   const q = state.query.toLowerCase();
-  return state.matches.filter((m) => {
+  return ds.matches.filter((m) => {
     if (state.sport !== 'all' && m.sport !== state.sport) return false;
     if (state.status !== 'all' && m.status.state !== state.status) return false;
     if (!q) return true;
-    const hay = [m.name, m.league.name, m.note, m.home?.name, m.away?.name, m.venue?.name, m.venue?.city, m.venue?.country, ...(m.leaders || []).map((l) => l.name)].join(' ').toLowerCase();
+    const hay = [m.name, m.league.name, m.league.country, m.note, m.home?.name, m.away?.name, m.venue?.name, m.venue?.city, m.venue?.country, ...(m.leaders || []).map((l) => l.name)].join(' ').toLowerCase();
     return hay.includes(q);
   });
 }
 
-function teamRow(t, m) {
+function teamRow(t = {}, m) {
   const logo = safeUrl(t.logo)
-    ? `<img src="${esc(t.logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" width="24" height="24" onerror="this.style.visibility='hidden'">`
+    ? `<img src="${esc(t.logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" width="26" height="26" onerror="this.style.visibility='hidden'">`
     : `<span class="badge">${esc((t.abbr || t.name || '?').slice(0, 3).toUpperCase())}</span>`;
   const score = t.score !== '' && t.score != null ? t.score : (t.linescores || []).join(' ');
   const showScore = m.status.state !== 'pre' && score !== '';
-  return `<div class="team${t.winner ? ' winner' : ''}">${logo}<span class="tname">${esc(t.name)}${t.record ? ` <small>${esc(t.record)}</small>` : ''}</span><span class="tscore">${showScore ? esc(score) : ''}</span></div>`;
+  const sets = t.linescores?.length && t.score !== undefined && t.score !== '' ? `<small class="sets">${esc(t.linescores.join(' '))}</small>` : '';
+  return `<div class="team${t.winner ? ' winner' : ''}">${logo}<span class="tname">${esc(t.name || 'TBD')}${t.record ? ` <small>${esc(t.record)}</small>` : ''}</span><span class="tscore">${sets}${showScore ? esc(score) : ''}</span></div>`;
 }
 
 function matchCard(m) {
@@ -157,12 +182,12 @@ function matchCard(m) {
   const body =
     m.kind === 'field'
       ? `<div class="field-name">${esc(m.name)}</div><ol class="leaders">${(m.leaders || []).slice(0, 5).map((l) => `<li><span>${esc(l.position)}</span>${esc(l.name)}<b>${esc(l.score)}</b></li>`).join('')}</ol>`
-      : teamRow(m.away, m) + teamRow(m.home, m);
+      : teamRow(m.home, m) + teamRow(m.away, m);
   const events = (m.events || []).filter((e) => /goal|red/i.test(e.type)).slice(0, 6);
   const venue = [m.venue?.name, m.venue?.city].filter(Boolean).join(', ');
   return `<article class="card state-${st}" data-key="${esc(keyOf(m))}">
     <header class="card-head">
-      <span class="league">${sp.emoji} ${esc(m.league.name)}</span>
+      <span class="league">${sp.emoji} ${esc(groupName(m))}</span>
       <span class="status ${st}">${st === 'in' ? '<i></i>' : ''}${esc(statusLabel(m))}</span>
     </header>
     ${m.note ? `<div class="note">${esc(m.note)}</div>` : ''}
@@ -174,73 +199,143 @@ function matchCard(m) {
       ${m.broadcasts?.length ? `<span>📺 ${esc(m.broadcasts.slice(0, 2).join(', '))}</span>` : ''}
     </div>
     <footer class="card-actions">
-      <button class="btn small" data-act="copy">Copy</button>
-      <button class="btn small ghost" data-act="code" title="View all code formats">&lt;/&gt; Codes</button>
-      ${safeUrl(m.link) ? `<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener">Match centre ↗</a>` : ''}
+      <button class="btn small copy-btn" data-act="copy" title="Copy all match details">⧉ Copy details</button>
+      <button class="btn small ghost" data-act="code" title="Preview and pick a format">&lt;/&gt; Formats</button>
+      ${safeUrl(m.link) ? `<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener" title="Match centre">↗</a>` : ''}
     </footer>
   </article>`;
 }
 
-function renderMatches() {
-  const list = visibleMatches();
-  $('#matchCount').textContent = list.length ? `(${list.length})` : '';
-  if (!list.length) {
-    $('#matches').innerHTML = `<div class="empty">${state.matches.length ? 'No matches for this filter.' : 'No matches in the current window.'}</div>`;
-    return;
-  }
+// Groups ordered: live first, then most important competitions, then by name.
+function groupMatches(list) {
   const groups = new Map();
   for (const m of list) {
-    const g = groups.get(m.league.name) || [];
-    g.push(m);
-    groups.set(m.league.name, g);
+    const k = `${m.sport}|${groupName(m)}`;
+    let g = groups.get(k);
+    if (!g) groups.set(k, (g = { name: groupName(m), sport: m.sport, priority: m.league.priority || 0, live: 0, matches: [] }));
+    g.matches.push(m);
+    if (m.status.state === 'in') g.live++;
   }
-  // Leagues with live games first
-  const ordered = [...groups.entries()].sort(([, a], [, b]) => Number(b.some((m) => m.status.state === 'in')) - Number(a.some((m) => m.status.state === 'in')));
-  $('#matches').innerHTML = ordered
-    .map(([name, ms]) => `<section class="league-group"><h3>${sportOf(ms[0].sport).emoji} ${esc(name)} <small>${ms.length}</small></h3><div class="grid">${ms.map(matchCard).join('')}</div></section>`)
-    .join('');
+  return [...groups.values()].sort((a, b) => Number(b.live > 0) - Number(a.live > 0) || b.priority - a.priority || a.name.localeCompare(b.name));
+}
+
+let renderQueue = [];
+let observer;
+function renderMatches() {
+  const ds = current();
+  const box = $('#matches');
+  observer?.disconnect();
+  if (NEWS_ONLY.has(state.sport)) {
+    $('#matchCount').textContent = '';
+    $('#scoresHint').textContent = '';
+    box.innerHTML = `<div class="empty">${sportOf(state.sport).emoji} Live scores for ${esc(sportOf(state.sport).label)} aren't available from our sources yet.<br>All the latest ${esc(sportOf(state.sport).label)} headlines are in the <b>Headlines</b> panel, each with a Copy button.</div>`;
+    return;
+  }
+  if (!ds) {
+    box.innerHTML = state.loading.has(state.sport)
+      ? `<div class="loading-note">Loading every ${state.sport === 'all' ? '' : esc(sportOf(state.sport).label) + ' '}match worldwide…</div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`
+      : '';
+    if (!state.loading.has(state.sport)) loadSport(state.sport);
+    $('#matchCount').textContent = '';
+    return;
+  }
+  const list = visibleMatches();
+  state.byKey = new Map(ds.matches.map((m) => [keyOf(m), m]));
+  const liveN = list.filter((m) => m.status.state === 'in').length;
+  $('#matchCount').textContent = list.length ? `(${list.length.toLocaleString()}${liveN ? ` · ${liveN} live` : ''})` : '';
+  $('#scoresHint').innerHTML =
+    state.sport === 'all'
+      ? 'Showing top competitions plus <b>every live match in the world</b>. Pick a sport for its full schedule.'
+      : `Every ${esc(sportOf(state.sport).label)} match worldwide · yesterday, today and tomorrow.`;
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">${ds.matches.length ? 'No matches for this filter.' : `No ${state.sport === 'all' ? '' : esc(sportOf(state.sport).label) + ' '}matches right now — check the headlines.`}</div>`;
+    return;
+  }
+  renderQueue = groupMatches(list);
+  box.innerHTML = '';
+  appendChunk();
+}
+
+function appendChunk() {
+  const box = $('#matches');
+  box.querySelector('.sentinel')?.remove();
+  let cards = 0;
+  const html = [];
+  while (renderQueue.length && cards < CHUNK) {
+    const g = renderQueue.shift();
+    cards += g.matches.length;
+    html.push(
+      `<section class="league-group"><h3>${sportOf(g.sport).emoji} ${esc(g.name)} <small>${g.matches.length}</small>${g.live ? `<span class="glive">${g.live} live</span>` : ''}</h3><div class="grid">${g.matches.map(matchCard).join('')}</div></section>`,
+    );
+  }
+  box.insertAdjacentHTML('beforeend', html.join(''));
+  if (renderQueue.length) {
+    box.insertAdjacentHTML('beforeend', '<div class="sentinel">Loading more…</div>');
+    observer = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && appendChunk(), { rootMargin: '800px' });
+    observer.observe(box.querySelector('.sentinel'));
+  }
+}
+
+function visibleNews() {
+  const q = state.query.toLowerCase();
+  return state.news.filter((n) => (state.sport === 'all' || n.sport === state.sport) && (!q || `${n.title} ${n.summary}`.toLowerCase().includes(q))).slice(0, 200);
 }
 
 function renderNews() {
-  const list = state.news.filter((n) => state.sport === 'all' || n.sport === state.sport).filter((n) => !state.query || `${n.title} ${n.summary}`.toLowerCase().includes(state.query.toLowerCase())).slice(0, 120);
+  const list = visibleNews();
   $('#newsCount').textContent = list.length ? `(${list.length})` : '';
+  state.newsVisible = list;
   if (!list.length) {
-    $('#news').innerHTML = `<div class="empty">No headlines for this filter.</div>`;
+    $('#news').innerHTML = state.news.length ? `<div class="empty">No headlines for this filter.</div>` : '<div class="skeleton"></div><div class="skeleton"></div>';
     return;
   }
   $('#news').innerHTML = list
-    .map((n, i) => `<article class="news-item" data-idx="${i}">
+    .map(
+      (n, i) => `<article class="news-item">
       ${safeUrl(n.image) ? `<img src="${esc(n.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
       <div>
         <a href="${esc(safeUrl(n.link))}" target="_blank" rel="noopener" class="news-title">${esc(n.title)}</a>
         <div class="news-meta">${sportOf(n.sport).emoji} ${esc(n.source)} · ${esc(timeAgo(n.published))}
-          <button class="link-btn" data-copy-news="${i}" title="Copy headline and link">Copy</button></div>
+          <button class="link-btn" data-copy-news="${i}" title="Copy headline details for an AI poster">⧉ Copy</button></div>
       </div>
-    </article>`)
+    </article>`,
+    )
     .join('');
-  state.newsVisible = list;
 }
 
 function renderTicker() {
-  const top = state.news.slice(0, 15);
+  const top = state.news.slice(0, 20);
   const html = top.map((n) => `<a href="${esc(safeUrl(n.link))}" target="_blank" rel="noopener">${sportOf(n.sport).emoji} ${esc(n.title)}</a>`).join('<span class="dot">•</span>');
   $('#ticker').innerHTML = html + (html ? '<span class="dot">•</span>' + html : '');
 }
 
 function renderStatus() {
-  const s = state.scoreSources;
+  const s = (current() || state.datasets.get('all'))?.sources;
   const n = state.newsSources;
   const parts = [];
-  if (s) parts.push(`${s.ok} scoreboards online${s.failed?.length ? `, ${s.failed.length} unavailable` : ''}`);
+  if (s) parts.push(`${s.ok} score sources online${s.failed?.length ? `, ${s.failed.length} unavailable` : ''}`);
   if (n) parts.push(`${n.ok} news feeds online${n.failed?.length ? `, ${n.failed.length} unavailable` : ''}`);
   parts.push(`Times shown in ${TZ}`);
-  $('#sourceStatus').textContent = parts.join(' · ');
+  $('#sourceStatus').innerHTML = `${esc(parts.join(' · '))} · <a href="/api/health?deep=1" target="_blank" rel="noopener">source check</a>`;
 }
 
 // ---------- copy ----------
-async function copy(text, msg = 'Copied!') {
+// Clipboard writes must start inside the click. Passing a promise to ClipboardItem lets
+// us fetch the full match details first and still copy in one tap (Chrome, Safari, Edge).
+async function writeClipboard(textOrPromise) {
+  if (window.ClipboardItem && navigator.clipboard?.write) {
+    try {
+      const blob = Promise.resolve(textOrPromise).then((t) => new Blob([t], { type: 'text/plain' }));
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]);
+      return true;
+    } catch {
+      /* fall through */
+    }
+  }
+  const text = await textOrPromise;
   try {
     await navigator.clipboard.writeText(text);
+    return true;
   } catch {
     const ta = document.createElement('textarea');
     ta.value = text;
@@ -248,10 +343,10 @@ async function copy(text, msg = 'Copied!') {
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    document.execCommand('copy');
+    const ok = document.execCommand('copy');
     ta.remove();
+    return ok;
   }
-  toast(msg);
 }
 
 let toastTimer;
@@ -260,48 +355,93 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
 const fmtOpts = () => ({ siteUrl: SITE, timeZone: TZ });
 const fmtLabel = (id) => FORMATS.find((f) => f.id === id)?.label || id;
 
+// Full details (scorers, stats, line-ups, venue, officials…) from /api/match, cached 2 min.
+function detailed(m) {
+  const k = keyOf(m);
+  const hit = state.details.get(k);
+  if (hit && Date.now() - hit.at < 120_000) return hit.promise;
+  const promise = getJSON(apiUrl(m, '', 'json'))
+    .then((full) => ({ ...m, ...full, league: { ...m.league, ...full.league }, details: full.details }))
+    .catch(() => m);
+  state.details.set(k, { at: Date.now(), promise });
+  return promise;
+}
+
+async function copyMatch(m, btn) {
+  const label = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Copying…';
+  const fmt = state.format;
+  const text = detailed(m).then((full) => formatMatch(full, fmt, fmtOpts()));
+  const ok = await writeClipboard(text);
+  btn.disabled = false;
+  btn.innerHTML = ok ? '✓ Copied' : label;
+  btn.classList.toggle('done', ok);
+  setTimeout(() => {
+    btn.innerHTML = label;
+    btn.classList.remove('done');
+  }, 1800);
+  toast(ok ? `Copied ${fmtLabel(fmt)} — paste it into your AI` : 'Copy failed — use Formats to select the text');
+}
+
 let dialogMatch = null;
 let dialogFormat = state.format;
-function openCodes(m) {
+async function openCodes(m) {
   dialogMatch = m;
   dialogFormat = state.format;
-  $('#dialogTitle').textContent = m.name || 'Match code';
   renderDialog();
   $('#codeDialog').showModal();
+  const full = await detailed(m);
+  if (dialogMatch === m) {
+    dialogMatch = full;
+    renderDialog();
+  }
 }
 
 function renderDialog() {
+  $('#dialogTitle').textContent = dialogMatch.name || 'Match details';
   $('#formatTabs').innerHTML = FORMATS.map((f) => `<button role="tab" data-fmt="${f.id}" class="${f.id === dialogFormat ? 'active' : ''}">${f.label}</button>`).join('');
   $('#codeBox').textContent = formatMatch(dialogMatch, dialogFormat, fmtOpts());
   const hints = {
-    text: 'Paste into WhatsApp, Telegram, X or email.',
+    poster: 'Everything about the match plus a ready-made prompt. Paste into ChatGPT, Gemini, Canva, Midjourney or any video AI.',
+    text: 'Short summary for WhatsApp, Telegram, X or email.',
     markdown: 'Paste into Discord, Reddit, GitHub or Notion.',
     json: 'Structured data for apps and spreadsheets.',
     embed: 'Live-updating widget for any website or blog.',
-    api: `Always-fresh JSON. Add &format=text or &format=markdown.`,
+    api: 'Always-fresh JSON. Add &format=poster, text or markdown.',
   };
   $('#dialogHint').textContent = hints[dialogFormat] || '';
 }
 
 // ---------- events ----------
+function setSport(sport) {
+  state.sport = sport;
+  store('sport', sport);
+  state.status = 'all';
+  document.querySelectorAll('#stateFilter button').forEach((x) => x.classList.toggle('active', x.dataset.state === 'all'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (!NEWS_ONLY.has(sport) && stale(state.datasets.get(sport))) loadSport(sport);
+  render();
+  document.querySelector(`.chip[data-sport="${sport}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+}
+
 function bind() {
   $('#defaultFormat').innerHTML = FORMATS.map((f) => `<option value="${f.id}"${f.id === state.format ? ' selected' : ''}>${f.label}</option>`).join('');
   $('#defaultFormat').addEventListener('change', (e) => {
     state.format = e.target.value;
-    store('fmt', state.format);
+    store('fmt2', state.format);
+    toast(`Copy buttons now copy ${fmtLabel(state.format)}`);
   });
 
   $('#sportChips').addEventListener('click', (e) => {
     const b = e.target.closest('[data-sport]');
-    if (!b) return;
-    state.sport = b.dataset.sport;
-    render();
+    if (b) setSport(b.dataset.sport);
   });
 
   $('#stateFilter').addEventListener('click', (e) => {
@@ -319,7 +459,7 @@ function bind() {
       state.query = e.target.value.trim();
       renderMatches();
       renderNews();
-    }, 120);
+    }, 150);
   });
 
   $('#matches').addEventListener('click', (e) => {
@@ -327,23 +467,26 @@ function bind() {
     if (!b) return;
     const m = state.byKey.get(b.closest('.card').dataset.key);
     if (!m) return;
-    if (b.dataset.act === 'copy') copy(formatMatch(m, state.format, fmtOpts()), `Copied as ${fmtLabel(state.format)}`);
+    if (b.dataset.act === 'copy') copyMatch(m, b);
     else openCodes(m);
   });
 
-  $('#news').addEventListener('click', (e) => {
+  $('#news').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-copy-news]');
     if (!b) return;
     const n = state.newsVisible?.[Number(b.dataset.copyNews)];
-    if (n) copy(`${sportOf(n.sport).emoji} ${n.title} — ${n.source}\n${n.link}`, 'Headline copied');
+    if (!n) return;
+    const ok = await writeClipboard(newsPoster(n, fmtOpts()));
+    toast(ok ? 'Headline details copied — paste it into your AI' : 'Copy failed');
   });
 
-  $('#copyAll').addEventListener('click', () => {
-    const list = visibleMatches();
+  $('#copyAll').addEventListener('click', async () => {
+    const list = visibleMatches().slice(0, 300);
     if (!list.length) return toast('Nothing to copy');
-    const sep = state.format === 'json' ? null : state.format === 'markdown' ? '\n\n---\n\n' : '\n\n';
+    const sep = state.format === 'json' ? null : '\n\n════════════════════════\n\n';
     const text = sep === null ? JSON.stringify(list, null, 2) : list.map((m) => formatMatch(m, state.format, fmtOpts())).join(sep);
-    copy(text, `Copied ${list.length} matches`);
+    const ok = await writeClipboard(text);
+    toast(ok ? `Copied ${list.length} matches` : 'Copy failed');
   });
 
   $('#formatTabs').addEventListener('click', (e) => {
@@ -352,7 +495,10 @@ function bind() {
     dialogFormat = b.dataset.fmt;
     renderDialog();
   });
-  $('#dialogCopy').addEventListener('click', () => copy($('#codeBox').textContent, `Copied ${fmtLabel(dialogFormat)}`));
+  $('#dialogCopy').addEventListener('click', async () => {
+    const ok = await writeClipboard($('#codeBox').textContent);
+    toast(ok ? `Copied ${fmtLabel(dialogFormat)}` : 'Copy failed');
+  });
 
   $('#refreshBtn').addEventListener('click', () => load({ bust: true }));
 
@@ -364,9 +510,10 @@ function bind() {
   });
 }
 
-// Debug helper: window.sportsnews.api(match) etc.
-window.sportsnews = { state, formatMatch, apiUrl: (m) => apiUrl(m, SITE) };
+// Debug helper: window.nxt.state etc.
+window.nxt = { state, formatMatch, apiUrl: (m) => apiUrl(m, SITE) };
 
 bind();
 document.body.dataset.view = 'scores';
+render();
 load();
