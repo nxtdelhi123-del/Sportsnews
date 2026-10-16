@@ -49,6 +49,9 @@ export const FORMATS = [
 
 export const sportOf = (key) => SPORTS[key] || SPORTS.other;
 
+export const TIER_LABELS = { vimp: 'VIMP', imp: 'IMP', low: 'Not important' };
+export const tierLine = (m) => (m.tier ? `${TIER_LABELS[m.tier] || m.tier}${m.tierReason ? ` (${m.tierReason})` : ''}` : '');
+
 export function statusLabel(m) {
   const s = m.status || {};
   if (s.state === 'in') return `LIVE${s.short ? ' · ' + s.short : ''}`;
@@ -124,6 +127,7 @@ export function toText(m, opts = {}) {
     `${sp.emoji} ${m.league?.name || sp.label}${m.note ? ' — ' + m.note : ''}`,
     scoreline(m),
     `Status: ${statusLabel(m)}`,
+    ...(m.tier ? [`Importance: ${tierLine(m)}`] : []),
     `Date: ${formatDate(m.date, opts.timeZone || 'UTC')}`,
   ];
   const v = venueLine(m);
@@ -219,6 +223,7 @@ export function toPoster(m, opts = {}) {
   L.push(`COMPETITION: ${comp}`);
   if (d.season) L.push(`SEASON: ${d.season}`);
   L.push(`STATUS: ${statusWord}`);
+  if (m.tier) L.push(`IMPORTANCE: ${tierLine(m)}`);
   L.push(`DATE & TIME: ${bothTimes(m.date, opts.timeZone)}`);
   const v = venueLine(m);
   if (v) L.push(`VENUE: ${v}${d.capacity ? ` (capacity ${Number(d.capacity).toLocaleString('en')})` : ''}${d.attendance ? ` · attendance ${Number(d.attendance).toLocaleString('en')}` : ''}`);
@@ -283,6 +288,7 @@ export function newsPoster(n, opts = {}) {
     '📰 NEWS DETAILS — for poster / video',
     '━━━━━━━━━━━━━━━━━━━━━━━━',
     `SPORT: ${sp.label} ${sp.emoji}`,
+    n.tier ? `IMPORTANCE: ${TIER_LABELS[n.tier]}` : '',
     `HEADLINE: ${n.title}`,
     n.summary ? `SUMMARY: ${n.summary}` : '',
     `SOURCE: ${n.source}${n.published ? ' · ' + formatDate(n.published, opts.timeZone || 'UTC') : ''}`,

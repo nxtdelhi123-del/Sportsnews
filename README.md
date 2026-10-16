@@ -12,6 +12,7 @@ Live scores and headlines from around the world, refreshed every 10 minutes, wit
 - **One-tap "Copy details"** on every match. It fetches the full match details when you tap and copies them in the format you picked:
   - **AI Poster / Video** (default): sport, competition, status, date and time (your time zone plus UTC), venue and capacity, score, result line, scorers with assists, cards, match stats, line-ups, coaches, referee, team colours and logo links, followed by a ready-to-use prompt for an image or video AI.
   - **Text**, **Markdown**, **JSON**, **HTML embed** and **Live API URL**.
+- **Importance labels.** Every match and headline is tagged **VIMP** (very important: Champions League, World Cup, IPL, internationals between the big cricket nations, Grand Slams, race day in F1, finals, and any match with a marquee club or star), **IMP** (important: top domestic leagues, NBA, NFL, ATP/WTA, UFC and similar) or **Not important**. The VIMP and IMP+ filters show only the big ones, and "Copy all shown" copies them together. Rules live in `lib/importance.js`.
 - **Copy on headlines** gives the headline, summary, source and image, plus a "breaking news" poster prompt.
 - Updates every 10 minutes (:00, :10, :20, :30, :40, :50). The page shows a countdown and refreshes itself.
 

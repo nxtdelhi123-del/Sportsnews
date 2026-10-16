@@ -415,3 +415,56 @@ test('API: overview survives ESPN and Sofascore being blocked thanks to TheSport
   assert.equal(data.sources.families.sportsdb.matches, 4);
   assert.ok(data.sources.failed.some((f) => /ESPN/.test(f.source) && /403/.test(f.error)));
 });
+
+// ---- importance ----
+import { matchTier, newsTier } from '../lib/importance.js';
+
+test('matches are labelled VIMP / IMP / not important', () => {
+  const t = (m) => matchTier(m).tier;
+  const vs = (league, home, away, extra = {}) => ({ sport: 'soccer', league: { name: league }, name: `${home} vs ${away}`, home: { name: home }, away: { name: away }, ...extra });
+  assert.equal(t(vs('UEFA Champions League', 'Bayern Munich', 'Celtic')), 'vimp');
+  assert.equal(t(vs('Premier League', 'Brentford', 'Fulham')), 'imp');
+  assert.equal(t(vs('Premier League', 'Arsenal', 'Fulham')), 'vimp'); // marquee club
+  assert.equal(t(vs('Premier League', 'Arsenal', 'Chelsea', { note: 'Round 8' })), 'vimp');
+  assert.equal(t(vs('Premier League 2', 'Arsenal U21', 'Chelsea U21')), 'low'); // youth
+  assert.equal(t(vs('Regionalliga Nord', 'Hannover II', 'Meppen')), 'low');
+  assert.equal(t(vs('EFL Championship', 'Hull City', 'Preston')), 'imp');
+  assert.equal(t(vs('Copa del Rey', 'Getafe', 'Osasuna', { note: 'Semi-final' })), 'vimp');
+  assert.equal(t(vs('Kenya Premier League', 'Gor Mahia', 'AFC Leopards', { note: 'Final' })), 'low'); // low stays low
+  assert.equal(t({ ...vs('Australia tour of India 2026', 'India', 'Australia'), sport: 'cricket', note: '2nd ODI · ODI' }), 'vimp');
+  assert.equal(t({ ...vs('County Championship', 'Surrey', 'Kent'), sport: 'cricket' }), 'low');
+  assert.equal(t({ ...vs('Big Bash League', 'Sydney Sixers', 'Perth Scorchers'), sport: 'cricket' }), 'imp');
+  assert.equal(t({ sport: 'racing', league: { name: 'Formula 1' }, name: 'United States Grand Prix — Race', kind: 'field' }), 'vimp');
+  assert.equal(t({ sport: 'racing', league: { name: 'Formula 1' }, name: 'United States Grand Prix — FP2', kind: 'field' }), 'low');
+  assert.equal(t({ sport: 'tennis', league: { name: 'ATP · Shanghai Masters' }, name: 'Sinner vs Alcaraz', home: { name: 'Jannik Sinner' }, away: { name: 'Carlos Alcaraz' }, note: "Men's Singles" }), 'vimp');
+  assert.equal(t({ sport: 'tennis', league: { name: 'ATP · Stockholm Open' }, name: 'A vs B', home: { name: 'Elias Ymer' }, away: { name: 'Jan Choinski' } }), 'imp');
+  assert.equal(t({ sport: 'basketball', league: { name: 'NBA' }, name: 'x', home: { name: 'Orlando Magic' }, away: { name: 'Detroit Pistons' } }), 'imp');
+  assert.equal(t({ sport: 'basketball', league: { name: 'NBA' }, name: 'x', home: { name: 'Los Angeles Lakers' }, away: { name: 'Detroit Pistons' } }), 'vimp');
+  assert.equal(t({ sport: 'combat', league: { name: 'UFC' }, name: 'UFC 320: Pereira vs Ankalaev', kind: 'field' }), 'vimp');
+  assert.equal(t({ sport: 'combat', league: { name: 'UFC' }, name: 'UFC Fight Night: Smith vs Jones', kind: 'field' }), 'vimp'); // "jones" is marquee
+  assert.equal(t({ sport: 'volleyball', league: { name: 'Plusliga' }, name: 'x', home: { name: 'Resovia' }, away: { name: 'Skra' } }), 'low');
+  assert.match(matchTier(vs('UEFA Champions League', 'Bayern Munich', 'Celtic')).reason, /Champions League/);
+});
+
+test('headlines are labelled by who and what', () => {
+  assert.equal(newsTier({ sport: 'soccer', title: 'Messi signs new Inter Miami contract' }), 'vimp');
+  assert.equal(newsTier({ sport: 'cricket', title: 'India name squad for Australia ODIs' }), 'imp');
+  assert.equal(newsTier({ sport: 'soccer', title: 'Burnley draw 0-0 with Luton' }), 'low');
+  assert.equal(newsTier({ sport: 'soccer', title: 'Brentford beat Fulham in Premier League' }), 'imp');
+  assert.equal(newsTier({ sport: 'soccer', title: 'Liverpool beat Chelsea to go top' }), 'vimp');
+  assert.equal(newsTier({ sport: 'other', title: 'Local club opens new changing rooms' }), 'low');
+  assert.equal(newsTier({ sport: 'racing', title: 'Verstappen takes pole at US Grand Prix' }), 'vimp');
+});
+
+test('scores API carries tiers and counts', async () => {
+  mockFetch();
+  const { default: scores } = await import('../api/scores.js?tiers');
+  const res = mockRes();
+  await scores({ query: {}, headers: {} }, res);
+  const data = JSON.parse(res.body);
+  assert.ok(data.matches.every((m) => ['vimp', 'imp', 'low'].includes(m.tier)));
+  assert.ok(data.tiers.vimp >= 1);
+  const arsenal = data.matches.find((m) => /Arsenal/.test(m.name));
+  assert.equal(arsenal.tier, 'vimp');
+  assert.match(formatMatch(arsenal, 'poster', {}), /IMPORTANCE: VIMP \(Premier League, (Arsenal|Chelsea)\)/);
+});
