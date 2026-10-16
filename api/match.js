@@ -3,6 +3,8 @@ import { espnMatch } from '../lib/espn.js';
 import { sofaMatch } from '../lib/sofa.js';
 import { cricketMatch, fetchCricket } from '../lib/cricket.js';
 import { memoize, setCache, sendJSON, siteUrl, slim } from '../lib/http.js';
+import { getScores } from '../lib/feeds.js';
+import { TSDB_SPORTS } from '../lib/sportsdb.js';
 import { formatMatch, FORMATS } from '../public/js/format.js';
 
 const TYPES = { text: 'text/plain', markdown: 'text/markdown', embed: 'text/html', api: 'text/plain', poster: 'text/plain' };
@@ -16,11 +18,16 @@ export function loadMatch(l, id) {
       return base ? cricketMatch(base) : null;
     }
     if (l.startsWith('sofa/')) return sofaMatch(l.slice(5), id);
+    if (l.startsWith('tsdb/')) {
+      // Usually already in the cached overview; only build the sport list if not.
+      const find = (d) => d.matches.find((m) => m.source === 'sportsdb' && m.id === id);
+      return find(await getScores('all')) || find(await getScores(l.slice(5))) || null;
+    }
     return espnMatch(LEAGUE_BY_PATH.get(l), id);
   });
 }
 
-const validLeague = (l) => l === 'cricket' || LEAGUE_BY_PATH.has(l) || (l.startsWith('sofa/') && SOFA_SLUGS.has(l.slice(5)));
+const validLeague = (l) => l === 'cricket' || LEAGUE_BY_PATH.has(l) || (l.startsWith('sofa/') && SOFA_SLUGS.has(l.slice(5))) || (l.startsWith('tsdb/') && l.slice(5) in TSDB_SPORTS);
 
 export default async function handler(req, res) {
   const { l = '', id = '', format = 'json', tz } = req.query || {};

@@ -271,3 +271,12 @@ export const cricinfoDetails = {
     supportInfo: { playersOfTheMatch: [{ player: { longName: 'Virat Kohli' } }] },
   },
 };
+
+export const tsdbSoccerDay = {
+  events: [
+    { idEvent: '2100001', strSport: 'Soccer', strLeague: 'English Premier League', strCountry: 'England', strSeason: '2026-2027', intRound: '8', strEvent: 'Arsenal vs Chelsea', strHomeTeam: 'Arsenal', strAwayTeam: 'Chelsea', idHomeTeam: '133604', idAwayTeam: '133610', intHomeScore: '2', intAwayScore: '1', strStatus: '2H', strProgress: '67', dateEvent: '2026-10-17', strTime: '14:00:00', strTimestamp: '2026-10-17T14:00:00', strVenue: 'Emirates Stadium', strHomeTeamBadge: 'https://r2.thesportsdb.com/images/media/team/badge/arsenal.png' },
+    { idEvent: '2100002', strSport: 'Soccer', strLeague: 'Indian Super League', strCountry: 'India', strEvent: 'Bengaluru vs Kerala Blasters', strHomeTeam: 'Bengaluru', strAwayTeam: 'Kerala Blasters', intHomeScore: '3', intAwayScore: '1', strStatus: 'Match Finished', dateEvent: '2026-10-16', strTime: '14:00:00', strTimestamp: '2026-10-16T14:00:00' },
+    { idEvent: '2100003', strSport: 'Soccer', strLeague: 'Saudi Pro League', strCountry: 'Saudi Arabia', strEvent: 'Al Hilal vs Al Nassr', strHomeTeam: 'Al Hilal', strAwayTeam: 'Al Nassr', intHomeScore: null, intAwayScore: null, strStatus: 'Not Started', dateEvent: '2026-10-17', strTime: '17:00:00', strTimestamp: '2026-10-17T17:00:00' },
+    { idEvent: '2100004', strSport: 'Motorsport', strLeague: 'Formula 1', strEvent: 'United States Grand Prix', strHomeTeam: '', strAwayTeam: '', strStatus: 'Not Started', dateEvent: '2026-10-18', strTime: '19:00:00', strTimestamp: '2026-10-18T19:00:00' },
+  ],
+};

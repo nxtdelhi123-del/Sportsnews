@@ -127,6 +127,7 @@ function mockRes() {
 }
 
 function mockFetch() {
+  clearMemo();
   globalThis.fetch = async (url) => {
     const u = String(url);
     let body;
@@ -199,7 +200,9 @@ import { mergeSources } from '../lib/feeds.js';
 import { cricketDetails } from '../lib/cricket.js';
 import { summaryDetails } from '../lib/espn.js';
 import { resultLine, newsPoster } from '../public/js/format.js';
-import { clearMemo } from '../lib/http.js';
+import { clearMemo, retryPolicy, pool } from '../lib/http.js';
+import { normalizeSportsDb } from '../lib/sportsdb.js';
+retryPolicy.delay = 0;
 
 test('normalizes Sofascore football with live minute, country and colours', () => {
   const now = Date.parse('2026-10-17T15:21:30Z');
@@ -325,4 +328,90 @@ test('API: match details for Sofascore and cricket in poster format', async () =
   res = mockRes();
   await match(req({ l: 'sofa/evil', id: '1' }), res);
   assert.equal(res.statusCode, 400);
+});
+
+// ---- resilience ----
+test('pool honours a deadline and marks the rest pending', async () => {
+  const slow = (ms) => () => new Promise((r) => setTimeout(() => r(ms), ms));
+  const t0 = Date.now();
+  const out = await pool([slow(10), slow(2000), slow(10), slow(2000)], 2, (f) => f(), { deadline: Date.now() + 150 });
+  assert.ok(Date.now() - t0 < 1000);
+  assert.equal(out[0].status, 'fulfilled');
+  assert.equal(out[1].status, 'pending');
+  assert.equal(out.filter((r) => r.status === 'pending').length >= 1, true);
+  const full = await pool([slow(5), slow(5), slow(5)], 2, (f) => f());
+  assert.deepEqual(full.map((r) => r.status), ['fulfilled', 'fulfilled', 'fulfilled']);
+});
+
+test('TheSportsDB events normalize with status, badges and priority', () => {
+  const now = Date.parse('2026-10-17T15:10:00Z');
+  const [live, done, pre, race] = fx.tsdbSoccerDay.events.map((e) => normalizeSportsDb(e, 'soccer', now));
+  assert.equal(live.status.state, 'in');
+  assert.equal(live.status.clock, "67'");
+  assert.equal(live.home.score, '2');
+  assert.equal(live.league.priority, 9900);
+  assert.equal(live.league.country, '');
+  assert.match(live.home.logo, /arsenal\.png$/);
+  assert.equal(done.status.state, 'post');
+  assert.equal(done.home.winner, true);
+  assert.equal(pre.status.state, 'pre');
+  assert.equal(pre.date, '2026-10-17T17:00:00.000Z');
+  assert.equal(race.kind, 'field');
+});
+
+test('ESPN: date range rejected with 400 falls back to one request per day', async () => {
+  clearMemo();
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    calls.push(u);
+    if (/dates=\d{8}-\d{8}/.test(u)) return new Response('bad', { status: 400 });
+    if (/dates=\d{8}$/.test(u)) return new Response(JSON.stringify({ events: [fx.soccerScoreboard.events[u.includes('20261017') ? 0 : 1]] }));
+    return new Response('x', { status: 404 });
+  };
+  const { fetchEspn } = await import('../lib/espn.js');
+  const r = await fetchEspn([EPL], NOW);
+  assert.equal(r.failed.length, 0);
+  assert.equal(r.ok, 1);
+  assert.equal(r.matches.length, 3);
+  assert.equal(calls.filter((u) => /dates=\d{8}$/.test(u)).length, 3);
+});
+
+test('ESPN: blocked host falls over to the second host and failures are reported', async () => {
+  clearMemo();
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.startsWith('https://site.api.espn.com')) return new Response('blocked', { status: 403 });
+    if (u.includes('eng.1')) return new Response(JSON.stringify(fx.soccerScoreboard));
+    return new Response('down', { status: 503 });
+  };
+  const { fetchEspn } = await import('../lib/espn.js');
+  const r = await fetchEspn([EPL, { path: 'soccer/esp.1', name: 'LaLiga', sport: 'soccer', range: true }], NOW);
+  assert.equal(r.matches.length, 2);
+  assert.equal(r.failed.length, 1);
+  assert.match(r.failed[0].error, /503/);
+});
+
+test('API: overview survives ESPN and Sofascore being blocked thanks to TheSportsDB', async () => {
+  clearMemo();
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes('thesportsdb.com')) {
+      if (!u.includes('s=Soccer')) return new Response(JSON.stringify({ events: null }));
+      return new Response(JSON.stringify(fx.tsdbSoccerDay));
+    }
+    if (u.includes('espncricinfo.com')) return new Response(JSON.stringify(fx.cricinfoCurrent));
+    return new Response('blocked', { status: 403 });
+  };
+  const { default: scores } = await import('../api/scores.js?resilient');
+  const res = mockRes();
+  await scores({ query: {}, headers: {} }, res);
+  const data = JSON.parse(res.body);
+  assert.equal(res.statusCode, 200);
+  assert.ok(data.matches.some((m) => m.source === 'sportsdb' && /Arsenal/.test(m.name)));
+  assert.ok(data.matches.some((m) => m.source === 'cricinfo'));
+  assert.equal(data.sources.families.espn.ok, 0);
+  assert.ok(data.sources.families.espn.failed > 0);
+  assert.equal(data.sources.families.sportsdb.matches, 4);
+  assert.ok(data.sources.failed.some((f) => /ESPN/.test(f.source) && /403/.test(f.error)));
 });

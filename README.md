@@ -7,7 +7,7 @@ Live scores and headlines from around the world, refreshed every 10 minutes, wit
 ## What it does
 
 - **Every sport, worldwide.** Pick a sport to get every match from yesterday to tomorrow, from top leagues down to regional divisions. Sports: football, cricket, basketball, tennis, American football, baseball, ice hockey, rugby, MMA, golf, motorsport, handball, volleyball, beach volleyball, table tennis, badminton, futsal, esports, darts, snooker, Aussie rules, water polo, floorball and bandy. "All sports" shows the top competitions plus every match that is live anywhere in the world.
-- **Sources:** Sofascore (global coverage), ESPN (about 120 competitions, with venues, TV channels and team colours) and ESPNcricinfo (cricket scorecards). When the same match comes from two sources, the richer one is kept.
+- **Sources:** Sofascore (global coverage), ESPN (about 110 competitions, with venues, TV channels and team colours), TheSportsDB (the major leagues of 22 sports) and ESPNcricinfo (cricket scorecards). They are independent of each other, so if one is blocked from the server the site still shows the big matches from the others. When the same match comes from two sources, the richer one is kept.
 - **Headlines** from about 60 feeds: BBC, Guardian, ESPN, Sky, Cricinfo, Autosport, Motorsport.com, Yahoo, CBS, NDTV, Times of India, The Hindu, Indian Express and Al Jazeera, plus Google News in 9 countries and per-sport searches (kabaddi, badminton, chess, athletics, esports and more).
 - **One-tap "Copy details"** on every match. It fetches the full match details when you tap and copies them in the format you picked:
   - **AI Poster / Video** (default): sport, competition, status, date and time (your time zone plus UTC), venue and capacity, score, result line, scorers with assists, cards, match stats, line-ups, coaches, referee, team colours and logo links, followed by a ready-to-use prompt for an image or video AI.
@@ -23,11 +23,12 @@ Live scores and headlines from around the world, refreshed every 10 minutes, wit
 | `GET /api/scores?sport=soccer` | Every match of one sport, yesterday to tomorrow. Optional `&state=in\|pre\|post` |
 | `GET /api/news` | Headlines, newest first. Filter: `?sport=` |
 | `GET /api/match?l=<league>&id=<id>&format=poster` | One match with full details. Formats: `json` (default), `poster`, `text`, `markdown`, `embed`. Optional `&tz=Asia/Kolkata` |
-| `GET /api/health?deep=1` | Checks each upstream source and reports whether it responds |
+| `GET /api/health?deep=1` | One real request to each data provider from the server, with status codes |
+| `/debug` | Human-readable source check: which providers work from this server, and how many matches each contributes |
 
 ## How the 10-minute updates work
 
-The API functions cache at Vercel's edge until the next 10-minute mark (`s-maxage`, with `stale-while-revalidate`). Upstream sources are hit at most once every 10 minutes per region, however many people are on the site. Every source is fetched in parallel with a timeout, so one slow or failing feed never breaks the page. The footer shows how many sources are online.
+The API functions cache at Vercel's edge until the next 10-minute mark (`s-maxage`, with `stale-while-revalidate`). Upstream sources are hit at most once every 10 minutes per region, however many people are on the site. Every source is fetched in parallel with a timeout and one retry, and a build has a 9-second budget: anything still loading is left out, the response is marked `partial` and cached for only 40 seconds so the next request fills it in. The footer shows how many matches each provider contributed; a banner appears when a major provider is blocked.
 
 ## Development
 

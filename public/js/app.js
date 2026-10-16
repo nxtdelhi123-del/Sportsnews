@@ -309,14 +309,32 @@ function renderTicker() {
   $('#ticker').innerHTML = html + (html ? '<span class="dot">•</span>' + html : '');
 }
 
+const FAMILY_NAMES = { espn: 'ESPN', cricinfo: 'Cricinfo', sofascore: 'Sofascore', sportsdb: 'TheSportsDB' };
+
 function renderStatus() {
-  const s = (current() || state.datasets.get('all'))?.sources;
+  const ds = current() || state.datasets.get('all');
+  const s = ds?.sources;
   const n = state.newsSources;
   const parts = [];
-  if (s) parts.push(`${s.ok} score sources online${s.failed?.length ? `, ${s.failed.length} unavailable` : ''}`);
-  if (n) parts.push(`${n.ok} news feeds online${n.failed?.length ? `, ${n.failed.length} unavailable` : ''}`);
-  parts.push(`Times shown in ${TZ}`);
-  $('#sourceStatus').innerHTML = `${esc(parts.join(' · '))} · <a href="/api/health?deep=1" target="_blank" rel="noopener">source check</a>`;
+  if (s?.families) {
+    parts.push(
+      Object.entries(s.families)
+        .map(([k, f]) => `${FAMILY_NAMES[k] || k} ${f.matches}${f.failed && !f.matches ? ' ✗' : ''}`)
+        .join(' · '),
+    );
+  } else if (s) parts.push(`${s.ok} score sources online${s.failed?.length ? `, ${s.failed.length} unavailable` : ''}`);
+  if (n) parts.push(`${n.ok} news feeds${n.failed?.length ? `, ${n.failed.length} unavailable` : ''}`);
+  if (ds?.partial) parts.push('some sources still loading');
+  parts.push(`Times in ${TZ}`);
+  $('#sourceStatus').innerHTML = `${esc(parts.join(' · '))} · <a href="/debug">source check</a>`;
+
+  // Warn when the big providers are down so a short list is never a mystery.
+  const banner = $('#sourceBanner');
+  const dead = s?.families ? Object.entries(s.families).filter(([, f]) => f.attempted && f.failed && !f.ok).map(([k]) => FAMILY_NAMES[k] || k) : [];
+  if (dead.length && (ds?.count || 0) < 60) {
+    banner.hidden = false;
+    banner.innerHTML = `⚠️ ${esc(dead.join(' and '))} ${dead.length > 1 ? 'are' : 'is'} not reachable from the server right now, so the list is short. <a href="/debug">Run the source check</a>.`;
+  } else banner.hidden = true;
 }
 
 // ---------- copy ----------
