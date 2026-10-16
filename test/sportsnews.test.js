@@ -508,3 +508,17 @@ test('API: ESPN cricket matches can be copied through /api/match', async () => {
   assert.match(res.body, /HOME: India \(IND\) — 301\/7 \(50 ov\)/);
   assert.match(res.body, /IMPORTANCE: VIMP \(international cricket\)/);
 });
+
+test('Sofascore is left alone for 30 minutes after a 403', async () => {
+  clearMemo();
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response('blocked', { status: 403 });
+  };
+  const { sofaGet } = await import('../lib/sofa.js');
+  await assert.rejects(sofaGet('/sport/football/events/live'), /403/);
+  const after = calls;
+  await assert.rejects(sofaGet('/sport/tennis/events/live'), /blocked here/);
+  assert.equal(calls, after);
+});
