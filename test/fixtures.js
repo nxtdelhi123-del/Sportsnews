@@ -163,3 +163,111 @@ export const googleNewsFeed = `<rss><channel>
   <source url="https://espn.com">ESPN</source>
 </item>
 </channel></rss>`;
+
+// ---- Sofascore ----
+const ts = (iso) => Math.floor(Date.parse(iso) / 1000);
+export const sofaFootballLive = {
+  events: [
+    {
+      id: 12345678,
+      slug: 'arsenal-chelsea',
+      customId: 'RsR',
+      startTimestamp: ts('2026-10-17T14:00:00Z'),
+      status: { code: 7, description: '2nd half', type: 'inprogress' },
+      time: { currentPeriodStartTimestamp: ts('2026-10-17T15:00:00Z') },
+      tournament: { name: 'Premier League', priority: 600, category: { name: 'England' }, uniqueTournament: { name: 'Premier League', userCount: 2000000 } },
+      roundInfo: { round: 8 },
+      homeTeam: { id: 42, name: 'Arsenal', shortName: 'Arsenal', nameCode: 'ARS', teamColors: { primary: '#cc0000', secondary: '#ffffff' } },
+      awayTeam: { id: 38, name: 'Chelsea', shortName: 'Chelsea', nameCode: 'CHE', teamColors: { primary: '#0a4595', secondary: '#ffffff' } },
+      homeScore: { current: 2, display: 2 },
+      awayScore: { current: 1, display: 1 },
+    },
+    {
+      id: 22222222,
+      slug: 'mohun-bagan-east-bengal',
+      customId: 'abc',
+      startTimestamp: ts('2026-10-17T14:00:00Z'),
+      status: { description: '1st half', type: 'inprogress' },
+      time: { currentPeriodStartTimestamp: ts('2026-10-17T14:00:00Z') },
+      tournament: { name: 'Indian Super League', category: { name: 'India' }, uniqueTournament: { name: 'Indian Super League', userCount: 50000 } },
+      homeTeam: { id: 1, name: 'Mohun Bagan SG', nameCode: 'MBG' },
+      awayTeam: { id: 2, name: 'East Bengal FC', nameCode: 'EBF' },
+      homeScore: { current: 0 },
+      awayScore: { current: 0 },
+    },
+  ],
+};
+
+export const sofaTennisDay = {
+  events: [
+    {
+      id: 333,
+      startTimestamp: ts('2026-10-16T10:00:00Z'),
+      status: { description: 'Ended', type: 'finished' },
+      winnerCode: 1,
+      tournament: { name: 'Shanghai, China', category: { name: 'ATP' }, uniqueTournament: { name: 'Shanghai', userCount: 90000 } },
+      homeTeam: { id: 10, name: 'Sinner J.' },
+      awayTeam: { id: 11, name: 'Alcaraz C.' },
+      homeScore: { current: 2, period1: 6, period2: 7 },
+      awayScore: { current: 0, period1: 4, period2: 6 },
+    },
+  ],
+};
+
+export const sofaEventDetail = {
+  event: {
+    ...sofaFootballLive.events[0],
+    venue: { stadium: { name: 'Emirates Stadium', capacity: 60704 }, city: { name: 'London' }, country: { name: 'England' } },
+    referee: { name: 'Michael Oliver', country: { name: 'England' } },
+    season: { name: 'Premier League 26/27' },
+    homeTeam: { ...sofaFootballLive.events[0].homeTeam, manager: { name: 'Mikel Arteta' } },
+    awayTeam: { ...sofaFootballLive.events[0].awayTeam, manager: { name: 'Enzo Maresca' } },
+  },
+};
+export const sofaIncidents = {
+  incidents: [
+    { incidentType: 'goal', incidentClass: 'regular', time: 61, isHome: true, player: { name: 'Declan Rice' }, homeScore: 2, awayScore: 1 },
+    { incidentType: 'card', incidentClass: 'yellow', time: 40, isHome: false, player: { name: 'Moisés Caicedo' } },
+    { incidentType: 'goal', incidentClass: 'penalty', time: 55, isHome: false, player: { name: 'Cole Palmer' }, homeScore: 1, awayScore: 1 },
+    { incidentType: 'goal', incidentClass: 'regular', time: 23, isHome: true, player: { name: 'Bukayo Saka' }, assist1: { name: 'Martin Ødegaard' }, homeScore: 1, awayScore: 0 },
+  ],
+};
+export const sofaStats = {
+  statistics: [{ period: 'ALL', groups: [{ groupName: 'Match overview', statisticsItems: [{ name: 'Ball possession', home: '58%', away: '42%' }, { name: 'Total shots', home: 14, away: 9 }] }] }],
+};
+export const sofaLineups = {
+  home: { formation: '4-3-3', players: [{ shirtNumber: 22, player: { name: 'David Raya' } }, { shirtNumber: 7, player: { name: 'Bukayo Saka' } }, { substitute: true, player: { name: 'Sub' } }] },
+  away: { formation: '4-2-3-1', players: [{ shirtNumber: 1, player: { name: 'Robert Sánchez' } }] },
+};
+
+export const espnSummary = {
+  header: { competitions: [soccerScoreboard.events[0].competitions[0]] },
+  gameInfo: { venue: { fullName: 'Emirates Stadium', address: { city: 'London', country: 'England' }, capacity: 60704 }, attendance: 60123, officials: [{ displayName: 'Michael Oliver', position: { displayName: 'Referee' } }] },
+  boxscore: {
+    teams: [
+      { team: { id: '363' }, statistics: [{ label: 'Possession', displayValue: '42%' }, { label: 'Shots', displayValue: '9' }] },
+      { team: { id: '359' }, statistics: [{ label: 'Possession', displayValue: '58%' }, { label: 'Shots', displayValue: '14' }] },
+    ],
+  },
+  rosters: [
+    { team: { displayName: 'Arsenal' }, formation: '4-3-3', roster: [{ starter: true, jersey: '22', athlete: { displayName: 'David Raya' } }] },
+    { team: { displayName: 'Chelsea' }, formation: '4-2-3-1', roster: [{ starter: true, jersey: '1', athlete: { displayName: 'Robert Sánchez' } }] },
+  ],
+  article: { headline: 'Arsenal edge Chelsea in derby thriller', description: 'Rice strikes late.' },
+};
+
+export const cricinfoDetails = {
+  match: { tossWinnerTeamId: 6, tossWinnerChoice: 1, teams: [{ team: { objectId: 6, longName: 'India' } }, { team: { objectId: 2, longName: 'Australia' } }] },
+  content: {
+    scorecard: {
+      innings: [
+        {
+          team: { longName: 'India' }, runs: 301, wickets: 7, overs: 50,
+          inningBatsmen: [{ player: { longName: 'Virat Kohli' }, runs: 112, balls: 98 }, { player: { longName: 'Rohit Sharma' }, runs: 45, balls: 40 }],
+          inningBowlers: [{ player: { longName: 'Pat Cummins' }, wickets: 3, conceded: 55, overs: 10 }],
+        },
+      ],
+    },
+    supportInfo: { playersOfTheMatch: [{ player: { longName: 'Virat Kohli' } }] },
+  },
+};
