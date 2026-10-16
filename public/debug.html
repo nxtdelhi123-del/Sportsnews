@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Source check · NXT Sports</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <style>
+    :root { --bg: #0a0a0c; --panel: #141417; --line: #2e2e35; --text: #f2f2f4; --muted: #9a9aa5; --red: #e10600; --ok: #1fbf5b; color-scheme: dark; }
+    @media (prefers-color-scheme: light) { :root { --bg: #f4f4f6; --panel: #fff; --line: #e2e2e7; --text: #0a0a0c; --muted: #5f5f6b; color-scheme: light; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 60px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 4px; } h1 a { color: inherit; text-decoration: none; }
+    h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 28px 0 10px; border-left: 4px solid var(--red); padding-left: 10px; }
+    p { color: var(--muted); margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: 12px; color: var(--muted); font-weight: 600; }
+    tr:last-child td { border-bottom: 0; }
+    .ok { color: var(--ok); font-weight: 700; } .bad { color: var(--red); font-weight: 700; }
+    code { background: rgba(127,127,127,0.15); padding: 1px 6px; border-radius: 6px; font-size: 12.5px; }
+    .verdict { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 12px; padding: 14px 16px; margin: 16px 0; }
+    .verdict.good { border-left-color: var(--ok); }
+    button { background: var(--red); color: #fff; border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 600; cursor: pointer; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1><a href="/">← NXT Sports</a> · Source check</h1>
+    <p>Each row is one real request from this server to a data provider. If a provider is blocked here, its matches can't appear on the site.</p>
+    <div id="verdict" class="verdict">Checking sources…</div>
+    <h2>Data providers</h2>
+    <table><thead><tr><th>Source</th><th>Result</th><th>Items</th><th>Time</th><th>Detail</th></tr></thead><tbody id="probes"><tr><td colspan="5" class="muted">Running…</td></tr></tbody></table>
+    <h2>Scores overview (what the home page gets)</h2>
+    <table><thead><tr><th>Family</th><th>Requests</th><th>OK</th><th>Failed</th><th>Still loading</th><th>Matches shown</th></tr></thead><tbody id="families"><tr><td colspan="6" class="muted">Loading…</td></tr></tbody></table>
+    <p id="summary" class="muted" style="margin-top:10px"></p>
+    <h2>Failures</h2>
+    <table><thead><tr><th>Source</th><th>Error</th></tr></thead><tbody id="failed"><tr><td colspan="2" class="muted">—</td></tr></tbody></table>
+    <p style="margin-top:20px"><button id="copy">⧉ Copy this report</button> <span class="muted">then paste it to whoever is fixing the site.</span></p>
+  </main>
+  <script type="module">
+    const $ = (s) => document.querySelector(s);
+    const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const report = { when: new Date().toISOString(), page: location.origin };
+    async function run() {
+      const [h, s] = await Promise.allSettled([fetch('/api/health?deep=1').then((r) => r.json()), fetch('/api/scores?t=' + Date.now()).then((r) => r.json())]);
+      if (h.status === 'fulfilled') {
+        report.health = h.value;
+        $('#probes').innerHTML = (h.value.probes || []).map((p) => `<tr><td>${esc(p.source)}</td><td class="${p.ok ? 'ok' : 'bad'}">${p.ok ? '✓ OK' : '✗ FAIL'}</td><td>${p.items ?? ''}</td><td>${p.ms} ms</td><td>${esc(p.error || '')}</td></tr>`).join('');
+        const bad = (h.value.probes || []).filter((p) => !p.ok).map((p) => p.source);
+        const scoreOk = (h.value.probes || []).filter((p) => p.ok && /ESPN \(|Sofascore|TheSportsDB/.test(p.source)).length;
+        $('#verdict').className = 'verdict' + (scoreOk >= 2 ? ' good' : '');
+        $('#verdict').innerHTML = scoreOk >= 2
+          ? `<b>Score providers reachable:</b> ${scoreOk} of 7 checks passed${bad.length ? ` · blocked here: ${esc(bad.join(', '))}` : ''}. Server region: <code>${esc(h.value.region || 'unknown')}</code>.`
+          : `<b>Problem:</b> most score providers are blocked from this server (${esc(bad.join(', ') || 'none responded')}). Server region: <code>${esc(h.value.region || 'unknown')}</code>.`;
+      } else {
+        $('#verdict').innerHTML = `<b>Problem:</b> /api/health failed: ${esc(h.reason)}`;
+      }
+      if (s.status === 'fulfilled') {
+        const d = s.value;
+        report.scores = { count: d.count, partial: d.partial, live: d.live, sources: d.sources };
+        const fam = d.sources?.families || {};
+        $('#families').innerHTML = Object.entries(fam).map(([k, f]) => `<tr><td>${esc(k)}</td><td>${f.attempted}</td><td class="${f.ok ? 'ok' : ''}">${f.ok}</td><td class="${f.failed ? 'bad' : ''}">${f.failed}</td><td>${f.pending}</td><td><b>${f.matches}</b></td></tr>`).join('');
+        $('#summary').textContent = `${d.count} matches in the overview (${Object.values(d.live || {}).reduce((a, b) => a + b, 0)} live)${d.partial ? ' · partial: some sources were still loading, it fills in on the next refresh' : ''} · updated ${d.updatedAt}`;
+        const failed = d.sources?.failed || [];
+        if (failed.length) $('#failed').innerHTML = failed.map((f) => `<tr><td>${esc(f.source)}</td><td>${esc(f.error)}</td></tr>`).join('');
+      } else {
+        $('#summary').textContent = `/api/scores failed: ${s.reason}`;
+      }
+    }
+    $('#copy').addEventListener('click', async () => { await navigator.clipboard.writeText(JSON.stringify(report, null, 2)); $('#copy').textContent = '✓ Copied'; });
+    run();
+  </script>
+</body>
+</html>
