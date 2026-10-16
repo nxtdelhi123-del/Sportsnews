@@ -484,9 +484,27 @@ test('ESPN cricket header feed normalizes and outranks the Cricinfo RSS copy', (
   assert.equal(m.league.name, 'Australia tour of India 2026');
   assert.equal(m.note, '2nd ODI');
   assert.equal(m.venue.name, 'Wankhede Stadium, Mumbai');
-  const rss = normalizeCricinfoRss('<rss><channel><item><title>India 301/7 v Australia 182/4 *</title><link>https://www.espncricinfo.com/ci/engine/match/1449900.html</link><pubDate>Fri, 16 Oct 2026 08:30:00 GMT</pubDate></item></channel></rss>');
+  // Cricinfo's live-score RSS has no timestamps: the duplicate must still be dropped.
+  const rss = normalizeCricinfoRss('<rss><channel><item><title>India 301/7 v Australia 182/4 *</title><link>https://www.espncricinfo.com/ci/engine/match/1449900.html</link></item><item><title>Surrey 210 v Kent 180/4 *</title><link>https://www.espncricinfo.com/ci/engine/match/777.html</link></item></channel></rss>');
+  assert.equal(rss[0].date, '');
   const merged = mergeSources([m], rss);
-  assert.equal(merged.length, 1);
+  assert.equal(merged.length, 2);
   assert.equal(merged[0].source, 'espn');
+  assert.equal(merged[1].name, 'Surrey vs Kent');
   assert.equal(matchTier(m).tier, 'vimp');
+});
+
+test('API: ESPN cricket matches can be copied through /api/match', async () => {
+  clearMemo();
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes('scoreboard/header?sport=cricket')) return new Response(JSON.stringify(fx.espnCricketHeader));
+    return new Response('blocked', { status: 403 });
+  };
+  const { default: match } = await import('../api/match.js?espncricket');
+  const res = mockRes();
+  await match({ query: { l: 'cricket-espn/1449890', id: '1449900', format: 'poster' }, headers: { host: 'nxt.example' } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, /HOME: India \(IND\) — 301\/7 \(50 ov\)/);
+  assert.match(res.body, /IMPORTANCE: VIMP \(international cricket\)/);
 });
