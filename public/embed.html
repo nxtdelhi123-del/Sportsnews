@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.png" type="image/png">
   <meta name="robots" content="noindex">
   <style>
-    :root { --bg: #141417; --line: #2e2e35; --text: #f2f2f4; --muted: #9a9aa5; --live: #ff2a1f; --win: #fbbf24; color-scheme: dark; }
+    :root { --bg: #0c0c0f; --line: #2a2a31; --text: #f2f2f4; --muted: #9a9aa5; --live: #ff2a1f; --win: #ff4a3d; color-scheme: dark; }
     @media (prefers-color-scheme: light) { :root { --bg: #fff; --line: #e2e2e7; --text: #0a0a0c; --muted: #5f5f6b; color-scheme: light; } }
     * { box-sizing: border-box; }
     body { margin: 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: transparent; }
@@ -48,8 +48,8 @@
         document.getElementById('w').innerHTML = `
           <div class="h"><span>${sportOf(m.sport).emoji} ${esc(m.league.name)}</span><span class="st ${m.status.state}">${esc(statusLabel(m))}</span></div>
           ${body}
-          <div class="m"><span>🕒 ${esc(when)}${m.venue?.name ? ' · ' + esc(m.venue.name) : ''}</span><a href="${esc(location.origin)}" target="_blank" rel="noopener"><img src="/img/nxt-mark.png" alt="" style="height:14px;vertical-align:-2px;background:#fff;border-radius:3px;padding:1px 2px"> NXT Sports ↗</a></div>`;
-        setTimeout(load, m.status.state === 'in' ? 60_000 : 15 * 60_000);
+          <div class="m"><span>🕒 ${esc(when)}${m.venue?.name ? ' · ' + esc(m.venue.name) : ''}</span><a href="${esc(location.origin)}" target="_blank" rel="noopener"><picture><source srcset="/img/nxt-mark-dark.png" media="(prefers-color-scheme: dark)"><img src="/img/nxt-mark.png" alt="" style="height:14px;vertical-align:-2px"></picture> NXT Sports ↗</a></div>`;
+        setTimeout(load, m.status.state === 'in' ? 60_000 : 10 * 60_000);
       } catch (e) {
         document.getElementById('w').textContent = 'Match unavailable right now.';
         setTimeout(load, 5 * 60_000);
