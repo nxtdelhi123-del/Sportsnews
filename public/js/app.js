@@ -1,4 +1,4 @@
-import { SPORTS, FORMATS, NEWS_ONLY, sportOf, statusLabel, formatMatch, newsPoster, apiUrl } from './format.js';
+import { SPORTS, FORMATS, NEWS_ONLY, TIER_LABELS, sportOf, statusLabel, formatMatch, newsPoster, apiUrl } from './format.js';
 
 const REFRESH_MS = 10 * 60_000;
 const SITE = location.origin;
@@ -12,6 +12,7 @@ const state = {
   news: [],
   sport: store('sport') || 'all',
   status: 'all',
+  tier: store('tier') || 'all',
   query: '',
   format: store('fmt2') || 'poster',
   updatedAt: null,
@@ -153,6 +154,10 @@ function renderChips() {
     (totalLive ? `<span class="live-pill"><i></i>${totalLive} live now</span>` : '');
 }
 
+const TIER_RANK = { vimp: 3, imp: 2, low: 1 };
+const tierOk = (t) => state.tier === 'all' || (state.tier === 'vimp' ? t === 'vimp' : t === 'vimp' || t === 'imp');
+const tierBadge = (t) => (t ? `<span class="tier tier-${t}" title="${esc(TIER_LABELS[t])}">${t === 'low' ? 'NOT IMP' : esc(TIER_LABELS[t])}</span>` : '');
+
 function visibleMatches() {
   const ds = current();
   if (!ds) return [];
@@ -160,6 +165,7 @@ function visibleMatches() {
   return ds.matches.filter((m) => {
     if (state.sport !== 'all' && m.sport !== state.sport) return false;
     if (state.status !== 'all' && m.status.state !== state.status) return false;
+    if (!tierOk(m.tier)) return false;
     if (!q) return true;
     const hay = [m.name, m.league.name, m.league.country, m.note, m.home?.name, m.away?.name, m.venue?.name, m.venue?.city, m.venue?.country, ...(m.leaders || []).map((l) => l.name)].join(' ').toLowerCase();
     return hay.includes(q);
@@ -187,7 +193,7 @@ function matchCard(m) {
   const venue = [m.venue?.name, m.venue?.city].filter(Boolean).join(', ');
   return `<article class="card state-${st}" data-key="${esc(keyOf(m))}">
     <header class="card-head">
-      <span class="league">${sp.emoji} ${esc(groupName(m))}</span>
+      <span class="league">${tierBadge(m.tier)}${sp.emoji} ${esc(groupName(m))}</span>
       <span class="status ${st}">${st === 'in' ? '<i></i>' : ''}${esc(statusLabel(m))}</span>
     </header>
     ${m.note ? `<div class="note">${esc(m.note)}</div>` : ''}
@@ -212,11 +218,12 @@ function groupMatches(list) {
   for (const m of list) {
     const k = `${m.sport}|${groupName(m)}`;
     let g = groups.get(k);
-    if (!g) groups.set(k, (g = { name: groupName(m), sport: m.sport, priority: m.league.priority || 0, live: 0, matches: [] }));
+    if (!g) groups.set(k, (g = { name: groupName(m), sport: m.sport, priority: m.league.priority || 0, live: 0, rank: 0, matches: [] }));
     g.matches.push(m);
+    g.rank = Math.max(g.rank, TIER_RANK[m.tier] || 0);
     if (m.status.state === 'in') g.live++;
   }
-  return [...groups.values()].sort((a, b) => Number(b.live > 0) - Number(a.live > 0) || b.priority - a.priority || a.name.localeCompare(b.name));
+  return [...groups.values()].sort((a, b) => Number(b.live > 0) - Number(a.live > 0) || b.rank - a.rank || b.priority - a.priority || a.name.localeCompare(b.name));
 }
 
 let renderQueue = [];
@@ -242,7 +249,8 @@ function renderMatches() {
   const list = visibleMatches();
   state.byKey = new Map(ds.matches.map((m) => [keyOf(m), m]));
   const liveN = list.filter((m) => m.status.state === 'in').length;
-  $('#matchCount').textContent = list.length ? `(${list.length.toLocaleString()}${liveN ? ` · ${liveN} live` : ''})` : '';
+  const vimpN = list.filter((m) => m.tier === 'vimp').length;
+  $('#matchCount').textContent = list.length ? `(${list.length.toLocaleString()}${liveN ? ` · ${liveN} live` : ''}${vimpN ? ` · ${vimpN} VIMP` : ''})` : '';
   $('#scoresHint').innerHTML =
     state.sport === 'all'
       ? 'Showing top competitions plus <b>every live match in the world</b>. Pick a sport for its full schedule.'
@@ -278,7 +286,7 @@ function appendChunk() {
 
 function visibleNews() {
   const q = state.query.toLowerCase();
-  return state.news.filter((n) => (state.sport === 'all' || n.sport === state.sport) && (!q || `${n.title} ${n.summary}`.toLowerCase().includes(q))).slice(0, 200);
+  return state.news.filter((n) => (state.sport === 'all' || n.sport === state.sport) && tierOk(n.tier) && (!q || `${n.title} ${n.summary}`.toLowerCase().includes(q))).slice(0, 200);
 }
 
 function renderNews() {
@@ -295,7 +303,7 @@ function renderNews() {
       ${safeUrl(n.image) ? `<img src="${esc(n.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
       <div>
         <a href="${esc(safeUrl(n.link))}" target="_blank" rel="noopener" class="news-title">${esc(n.title)}</a>
-        <div class="news-meta">${sportOf(n.sport).emoji} ${esc(n.source)} · ${esc(timeAgo(n.published))}
+        <div class="news-meta">${tierBadge(n.tier)}${sportOf(n.sport).emoji} ${esc(n.source)} · ${esc(timeAgo(n.published))}
           <button class="link-btn" data-copy-news="${i}" title="Copy headline details for an AI poster">⧉ Copy</button></div>
       </div>
     </article>`,
@@ -304,7 +312,7 @@ function renderNews() {
 }
 
 function renderTicker() {
-  const top = state.news.slice(0, 20);
+  const top = [...state.news].sort((a, b) => (TIER_RANK[b.tier] || 0) - (TIER_RANK[a.tier] || 0)).slice(0, 20);
   const html = top.map((n) => `<a href="${esc(safeUrl(n.link))}" target="_blank" rel="noopener">${sportOf(n.sport).emoji} ${esc(n.title)}</a>`).join('<span class="dot">•</span>');
   $('#ticker').innerHTML = html + (html ? '<span class="dot">•</span>' + html : '');
 }
@@ -460,6 +468,17 @@ function bind() {
   $('#sportChips').addEventListener('click', (e) => {
     const b = e.target.closest('[data-sport]');
     if (b) setSport(b.dataset.sport);
+  });
+
+  document.querySelectorAll('#tierFilter button').forEach((x) => x.classList.toggle('active', x.dataset.tier === state.tier));
+  $('#tierFilter').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tier]');
+    if (!b) return;
+    state.tier = b.dataset.tier;
+    store('tier', state.tier);
+    document.querySelectorAll('#tierFilter button').forEach((x) => x.classList.toggle('active', x === b));
+    renderMatches();
+    renderNews();
   });
 
   $('#stateFilter').addEventListener('click', (e) => {
