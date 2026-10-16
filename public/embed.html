@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live match · Sportsnews</title>
+  <meta name="robots" content="noindex">
+  <style>
+    :root { --bg: #121826; --line: #26314a; --text: #e8edf7; --muted: #8b97b0; --live: #ef4444; --win: #fbbf24; color-scheme: dark; }
+    @media (prefers-color-scheme: light) { :root { --bg: #fff; --line: #e1e6ef; --text: #0f172a; --muted: #5b6780; color-scheme: light; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: transparent; }
+    .w { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .h { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+    .st { font-weight: 700; } .st.in { color: var(--live); }
+    .t { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; font-weight: 600; font-size: 15px; }
+    .t img, .t .b { width: 28px; height: 28px; object-fit: contain; }
+    .t .b { border-radius: 6px; background: var(--line); font-size: 9px; display: grid; place-items: center; }
+    .t .s { font-weight: 800; font-size: 20px; font-variant-numeric: tabular-nums; }
+    .t.win .s { color: var(--win); }
+    .m { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .m a { color: inherit; }
+    ol { margin: 0; padding-left: 20px; }
+  </style>
+</head>
+<body>
+  <div class="w" id="w">Loading match…</div>
+  <script type="module">
+    import { statusLabel, sportOf } from '/js/format.js';
+    const p = new URLSearchParams(location.search);
+    const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const ok = (u) => /^https?:\/\//i.test(u || '');
+    const row = (t, m) => {
+      const logo = ok(t.logo) ? `<img src="${esc(t.logo)}" alt="" referrerpolicy="no-referrer">` : `<span class="b">${esc((t.abbr || t.name || '?').slice(0, 3))}</span>`;
+      const sc = m.status.state === 'pre' ? '' : t.score !== '' ? t.score : (t.linescores || []).join(' ');
+      return `<div class="t${t.winner ? ' win' : ''}">${logo}<span>${esc(t.name)}</span><span class="s">${esc(sc)}</span></div>`;
+    };
+    async function load() {
+      try {
+        const r = await fetch(`/api/match?l=${encodeURIComponent(p.get('l') || '')}&id=${encodeURIComponent(p.get('id') || '')}`);
+        const m = await r.json();
+        if (!r.ok) throw new Error(m.error);
+        const body = m.kind === 'field'
+          ? `<strong>${esc(m.name)}</strong><ol>${(m.leaders || []).slice(0, 5).map((l) => `<li>${esc(l.name)} <b>${esc(l.score)}</b></li>`).join('')}</ol>`
+          : row(m.away, m) + row(m.home, m);
+        const when = new Date(m.date).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        document.getElementById('w').innerHTML = `
+          <div class="h"><span>${sportOf(m.sport).emoji} ${esc(m.league.name)}</span><span class="st ${m.status.state}">${esc(statusLabel(m))}</span></div>
+          ${body}
+          <div class="m"><span>🕒 ${esc(when)}${m.venue?.name ? ' · ' + esc(m.venue.name) : ''}</span><a href="${esc(location.origin)}" target="_blank" rel="noopener">Sportsnews ↗</a></div>`;
+        setTimeout(load, m.status.state === 'in' ? 60_000 : 15 * 60_000);
+      } catch (e) {
+        document.getElementById('w').textContent = 'Match unavailable right now.';
+        setTimeout(load, 5 * 60_000);
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sportsnews · Global Sports Newsroom</title>
+  <meta name="description" content="Live scores and sports headlines from around the world, refreshed every 15 minutes. Copy match details as text, Markdown, JSON or embed code in one click.">
+  <meta name="theme-color" content="#0b0f17">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="module" src="/js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">●</span>
+      <div>
+        <h1>Sportsnews</h1>
+        <p class="tagline">Global sports newsroom · every 15 minutes</p>
+      </div>
+    </div>
+    <div class="refresh" aria-live="polite">
+      <div class="refresh-meta">
+        <span id="updated">Loading…</span>
+        <span id="countdown" class="muted"></span>
+      </div>
+      <button id="refreshBtn" class="btn" type="button" title="Refresh now">↻ Refresh</button>
+    </div>
+  </header>
+
+  <div class="ticker" aria-label="Top headlines">
+    <span class="ticker-label">Latest</span>
+    <div class="ticker-track"><div id="ticker" class="ticker-inner"></div></div>
+  </div>
+
+  <nav class="sports" id="sportChips" aria-label="Filter by sport"></nav>
+
+  <div class="view-switch" role="tablist">
+    <button role="tab" class="active" data-view="scores">Scores</button>
+    <button role="tab" data-view="news">News</button>
+  </div>
+
+  <main class="layout">
+    <section class="panel scores-panel" id="scoresPanel" aria-labelledby="scoresTitle">
+      <div class="panel-head">
+        <h2 id="scoresTitle">Matches <span id="matchCount" class="count"></span></h2>
+        <div class="controls">
+          <div class="seg" id="stateFilter" role="group" aria-label="Match status">
+            <button data-state="all" class="active">All</button>
+            <button data-state="in">Live</button>
+            <button data-state="pre">Upcoming</button>
+            <button data-state="post">Results</button>
+          </div>
+          <input id="search" type="search" placeholder="Search team, league, venue…" autocomplete="off">
+          <label class="fmt-pick">Copy as
+            <select id="defaultFormat"></select>
+          </label>
+          <button id="copyAll" class="btn ghost" type="button" title="Copy every match shown">Copy all shown</button>
+        </div>
+      </div>
+      <div id="matches" class="matches"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+    </section>
+
+    <aside class="panel news-panel" id="newsPanel" aria-labelledby="newsTitle">
+      <div class="panel-head">
+        <h2 id="newsTitle">Headlines <span id="newsCount" class="count"></span></h2>
+      </div>
+      <div id="news" class="news"><div class="skeleton"></div><div class="skeleton"></div></div>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <p>Data: ESPN, ESPNcricinfo, BBC Sport, The Guardian, Sky Sports, Google News and more. Updated on the quarter hour. Every match has a copy-ready <code>text</code>, <code>markdown</code>, <code>json</code>, <code>embed</code> and live <code>/api/match</code> code.</p>
+    <p id="sourceStatus" class="muted"></p>
+  </footer>
+
+  <dialog id="codeDialog" class="code-dialog">
+    <form method="dialog" class="dialog-head">
+      <h3 id="dialogTitle">Match code</h3>
+      <button class="icon-btn" aria-label="Close">✕</button>
+    </form>
+    <div class="tabs" id="formatTabs" role="tablist"></div>
+    <pre id="codeBox" class="code" tabindex="0"></pre>
+    <div class="dialog-actions">
+      <span id="dialogHint" class="muted"></span>
+      <button id="dialogCopy" class="btn" type="button">Copy code</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
