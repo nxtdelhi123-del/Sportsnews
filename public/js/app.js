@@ -325,11 +325,10 @@ function renderStatus() {
   const n = state.newsSources;
   const parts = [];
   if (s?.families) {
-    parts.push(
-      Object.entries(s.families)
-        .map(([k, f]) => `${FAMILY_NAMES[k] || k} ${f.matches}${f.failed && !f.matches ? ' ✗' : ''}`)
-        .join(' · '),
-    );
+    const fams = Object.entries(s.families);
+    parts.push(fams.filter(([, f]) => f.matches).map(([k, f]) => `${FAMILY_NAMES[k] || k} ${f.matches}`).join(' · '));
+    const blocked = fams.filter(([, f]) => f.attempted && !f.ok).map(([k]) => FAMILY_NAMES[k] || k);
+    if (blocked.length) parts.push(`${blocked.join(', ')} blocked`);
   } else if (s) parts.push(`${s.ok} score sources online${s.failed?.length ? `, ${s.failed.length} unavailable` : ''}`);
   if (n) parts.push(`${n.ok} news feeds${n.failed?.length ? `, ${n.failed.length} unavailable` : ''}`);
   if (ds?.partial) parts.push('some sources still loading');

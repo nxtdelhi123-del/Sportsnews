@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeScoreboard, scoreboardUrl } from '../lib/espn.js';
+import * as espnModule from '../lib/espn.js';
+import { normalizeScoreboard } from '../lib/espn.js';
 import { normalizeCricinfo, normalizeCricinfoRss } from '../lib/cricket.js';
 import { parseFeed, classify } from '../lib/rss.js';
 import { mergeNews, sortMatches } from '../lib/feeds.js';
@@ -10,9 +11,13 @@ import * as fx from './fixtures.js';
 const NOW = Date.parse('2026-10-16T20:00:00Z');
 const EPL = { path: 'soccer/eng.1', name: 'Premier League', sport: 'soccer', range: true };
 
-test('scoreboard URL covers yesterday to tomorrow for team sports', () => {
-  assert.match(scoreboardUrl(EPL, NOW), /soccer\/eng\.1\/scoreboard\?limit=300&dates=20261015-20261017$/);
-  assert.doesNotMatch(scoreboardUrl({ path: 'golf/pga' }, NOW), /dates=/);
+test('team-sport leagues are fetched one day at a time; tournaments in one request', () => {
+  const { scoreboardUrls } = espnModule;
+  assert.deepEqual(
+    scoreboardUrls(EPL, NOW).map((u) => u.split('?')[1]),
+    ['limit=300&dates=20261015', 'limit=300&dates=20261016', 'limit=300&dates=20261017'],
+  );
+  assert.deepEqual(scoreboardUrls({ path: 'golf/pga' }, NOW), ['https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?limit=300']);
 });
 
 test('normalizes a live soccer match with key events', () => {
@@ -359,22 +364,20 @@ test('TheSportsDB events normalize with status, badges and priority', () => {
   assert.equal(race.kind, 'field');
 });
 
-test('ESPN: date range rejected with 400 falls back to one request per day', async () => {
+test('ESPN: unknown league codes count as empty, not as failures', async () => {
   clearMemo();
-  const calls = [];
   globalThis.fetch = async (url) => {
     const u = String(url);
-    calls.push(u);
-    if (/dates=\d{8}-\d{8}/.test(u)) return new Response('bad', { status: 400 });
+    if (u.includes('ksa.1')) return new Response('bad', { status: 400 });
     if (/dates=\d{8}$/.test(u)) return new Response(JSON.stringify({ events: [fx.soccerScoreboard.events[u.includes('20261017') ? 0 : 1]] }));
     return new Response('x', { status: 404 });
   };
   const { fetchEspn } = await import('../lib/espn.js');
-  const r = await fetchEspn([EPL], NOW);
+  const r = await fetchEspn([EPL, { path: 'soccer/ksa.1', name: 'Saudi Pro League', sport: 'soccer', range: true }], NOW);
   assert.equal(r.failed.length, 0);
-  assert.equal(r.ok, 1);
+  assert.equal(r.ok, 2);
+  assert.deepEqual(r.unknown, ['Saudi Pro League']);
   assert.equal(r.matches.length, 3);
-  assert.equal(calls.filter((u) => /dates=\d{8}$/.test(u)).length, 3);
 });
 
 test('ESPN: blocked host falls over to the second host and failures are reported', async () => {
@@ -382,7 +385,7 @@ test('ESPN: blocked host falls over to the second host and failures are reported
   globalThis.fetch = async (url) => {
     const u = String(url);
     if (u.startsWith('https://site.api.espn.com')) return new Response('blocked', { status: 403 });
-    if (u.includes('eng.1')) return new Response(JSON.stringify(fx.soccerScoreboard));
+    if (u.includes('eng.1')) return new Response(JSON.stringify({ events: u.includes('20261016') ? fx.soccerScoreboard.events : [] }));
     return new Response('down', { status: 503 });
   };
   const { fetchEspn } = await import('../lib/espn.js');
@@ -467,4 +470,23 @@ test('scores API carries tiers and counts', async () => {
   const arsenal = data.matches.find((m) => /Arsenal/.test(m.name));
   assert.equal(arsenal.tier, 'vimp');
   assert.match(formatMatch(arsenal, 'poster', {}), /IMPORTANCE: VIMP \(Premier League, (Arsenal|Chelsea)\)/);
+});
+
+// ---- ESPN cricket ----
+import { normalizeEspnCricket } from '../lib/espn-cricket.js';
+
+
+test('ESPN cricket header feed normalizes and outranks the Cricinfo RSS copy', () => {
+  const [m] = normalizeEspnCricket(fx.espnCricketHeader);
+  assert.equal(m.sport, 'cricket');
+  assert.equal(m.status.state, 'in');
+  assert.equal(m.home.score, '301/7 (50 ov)');
+  assert.equal(m.league.name, 'Australia tour of India 2026');
+  assert.equal(m.note, '2nd ODI');
+  assert.equal(m.venue.name, 'Wankhede Stadium, Mumbai');
+  const rss = normalizeCricinfoRss('<rss><channel><item><title>India 301/7 v Australia 182/4 *</title><link>https://www.espncricinfo.com/ci/engine/match/1449900.html</link><pubDate>Fri, 16 Oct 2026 08:30:00 GMT</pubDate></item></channel></rss>');
+  const merged = mergeSources([m], rss);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].source, 'espn');
+  assert.equal(matchTier(m).tier, 'vimp');
 });
