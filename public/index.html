@@ -4,26 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NXT Sports · Global Sports Newsroom</title>
-  <meta name="description" content="Live scores and sports headlines from around the world, refreshed every 15 minutes. Copy match details as text, Markdown, JSON or embed code in one click.">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Live scores and sports headlines from around the world, refreshed every 10 minutes. Copy match details as text, Markdown, JSON or embed code in one click.">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta property="og:title" content="NXT Sports · Global Sports Newsroom">
-  <meta property="og:description" content="Live scores and headlines from around the world, every 15 minutes.">
+  <meta property="og:description" content="Live scores and headlines from around the world, every 10 minutes.">
   <meta property="og:image" content="/img/og.jpg">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap">
+  <link rel="preload" as="image" href="/img/bg-eagle-dark.webp" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/css/style.css">
   <script type="module" src="/js/app.js"></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="NXT Sports home">
-      <img class="brand-mark" src="/img/nxt-mark.png" alt="" width="95" height="56">
-      <img class="brand-word" src="/img/nxt-word.png" alt="NXT" width="110" height="32">
+      <picture>
+        <source srcset="/img/nxt-mark-dark.png" media="(prefers-color-scheme: dark)">
+        <img class="brand-mark" src="/img/nxt-mark.png" alt="" width="95" height="56">
+      </picture>
+      <picture>
+        <source srcset="/img/nxt-word-dark.png" media="(prefers-color-scheme: dark)">
+        <img class="brand-word" src="/img/nxt-word.png" alt="NXT" width="110" height="32">
+      </picture>
       <span class="brand-sub">
         <span class="sports-word">Sports</span>
-        <span class="tagline"><span class="logo" aria-hidden="true">●</span> Live newsroom · every 15 min</span>
+        <span class="tagline"><span class="logo" aria-hidden="true">●</span> Live newsroom · every 10 min</span>
       </span>
     </a>
     <div class="refresh" aria-live="polite">
@@ -77,8 +88,8 @@
   </main>
 
   <footer class="footer">
-    <p class="footer-brand"><img src="/img/nxt-mark.png" alt="" width="48" height="28"> <strong>NXT Sports</strong> · Global Sports Newsroom</p>
-    <p>Data: ESPN, ESPNcricinfo, BBC Sport, The Guardian, Sky Sports, Google News and more. Updated on the quarter hour. Every match has a copy-ready <code>text</code>, <code>markdown</code>, <code>json</code>, <code>embed</code> and live <code>/api/match</code> code.</p>
+    <p class="footer-brand"><picture><source srcset="/img/nxt-mark-dark.png" media="(prefers-color-scheme: dark)"><img src="/img/nxt-mark.png" alt="" width="51" height="30"></picture> <strong>NXT Sports</strong> · Global Sports Newsroom</p>
+    <p>Data: ESPN, ESPNcricinfo, BBC Sport, The Guardian, Sky Sports, Google News and more. Updated every 10 minutes. Every match has a copy-ready <code>text</code>, <code>markdown</code>, <code>json</code>, <code>embed</code> and live <code>/api/match</code> code.</p>
     <p id="sourceStatus" class="muted"></p>
   </footer>
 

@@ -1,6 +1,6 @@
 import { SPORTS, FORMATS, sportOf, statusLabel, formatMatch, apiUrl } from './format.js';
 
-const REFRESH_MS = 15 * 60_000;
+const REFRESH_MS = 10 * 60_000;
 const SITE = location.origin;
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -82,7 +82,7 @@ async function load({ bust = false } = {}) {
   schedule();
 }
 
-// Refresh on the quarter hour, a few seconds after the server rebuilds.
+// Refresh on every 10-minute mark, a few seconds after the server rebuilds.
 let timer;
 function schedule() {
   clearTimeout(timer);

@@ -2,7 +2,7 @@
 
 <img src="public/img/og.jpg" alt="NXT" width="480">
 
-Live scores and headlines from around the world, refreshed every 15 minutes, with a one-click **copy code** for every match.
+Live scores and headlines from around the world, refreshed every 10 minutes, with a one-click **copy code** for every match.
 
 ## What it does
 
@@ -15,7 +15,7 @@ Live scores and headlines from around the world, refreshed every 15 minutes, wit
   - **HTML embed**: an `<iframe>` widget that keeps itself updated
   - **Live API URL**: always-fresh JSON or text
 - **Copy all shown** copies every match that matches the current filters in one go.
-- Updates on the quarter hour (:00, :15, :30, :45). The page shows a countdown to the next update and refreshes itself.
+- Updates every 10 minutes (:00, :10, :20, :30, :40, :50). The page shows a countdown to the next update and refreshes itself.
 
 ## API
 
@@ -32,9 +32,9 @@ Example:
 curl "https://<your-app>.vercel.app/api/match?l=soccer/eng.1&id=740001&format=text"
 ```
 
-## How the 15-minute updates work
+## How the 10-minute updates work
 
-The API functions cache at Vercel's edge until the next quarter hour (`s-maxage`, with `stale-while-revalidate`). Upstream sources are hit at most once per quarter hour per region, however many people are on the site. Every source is fetched in parallel with a timeout, so one slow or failing feed never breaks the page. The footer shows how many sources are online.
+The API functions cache at Vercel's edge until the next 10-minute mark (`s-maxage`, with `stale-while-revalidate`). Upstream sources are hit at most once every 10 minutes per region, however many people are on the site. Every source is fetched in parallel with a timeout, so one slow or failing feed never breaks the page. The footer shows how many sources are online.
 
 ## Development
 
