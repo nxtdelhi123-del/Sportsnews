@@ -104,6 +104,7 @@ export function toText(m, opts = {}) {
   if (m.headline) lines.push(`Summary: ${m.headline}`);
   if (m.broadcasts?.length) lines.push(`TV: ${m.broadcasts.join(', ')}`);
   if (m.link) lines.push(`More: ${m.link}`);
+  if (opts.siteUrl) lines.push(`via NXT Sports · ${opts.siteUrl}`);
   return lines.join('\n');
 }
 
@@ -120,6 +121,7 @@ export function toMarkdown(m, opts = {}) {
   if (ld.length) out.push('', '**Leaderboard**', ...ld.map((e) => `- ${e}`));
   if (m.headline) out.push('', `> ${m.headline}`);
   if (m.link) out.push('', `[Full match centre](${m.link})`);
+  if (opts.siteUrl) out.push('', `_via [NXT Sports](${opts.siteUrl})_`);
   return out.join('\n');
 }
 

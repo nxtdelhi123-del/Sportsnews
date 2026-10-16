@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Live match · Sportsnews</title>
+  <title>Live match · NXT Sports</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
   <meta name="robots" content="noindex">
   <style>
-    :root { --bg: #121826; --line: #26314a; --text: #e8edf7; --muted: #8b97b0; --live: #ef4444; --win: #fbbf24; color-scheme: dark; }
-    @media (prefers-color-scheme: light) { :root { --bg: #fff; --line: #e1e6ef; --text: #0f172a; --muted: #5b6780; color-scheme: light; } }
+    :root { --bg: #141417; --line: #2e2e35; --text: #f2f2f4; --muted: #9a9aa5; --live: #ff2a1f; --win: #fbbf24; color-scheme: dark; }
+    @media (prefers-color-scheme: light) { :root { --bg: #fff; --line: #e2e2e7; --text: #0a0a0c; --muted: #5f5f6b; color-scheme: light; } }
     * { box-sizing: border-box; }
     body { margin: 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: transparent; }
-    .w { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .w { background: var(--bg); border: 1px solid var(--line); border-top: 3px solid #e10600; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
     .h { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
     .st { font-weight: 700; } .st.in { color: var(--live); }
     .t { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; font-weight: 600; font-size: 15px; }
@@ -47,7 +48,7 @@
         document.getElementById('w').innerHTML = `
           <div class="h"><span>${sportOf(m.sport).emoji} ${esc(m.league.name)}</span><span class="st ${m.status.state}">${esc(statusLabel(m))}</span></div>
           ${body}
-          <div class="m"><span>🕒 ${esc(when)}${m.venue?.name ? ' · ' + esc(m.venue.name) : ''}</span><a href="${esc(location.origin)}" target="_blank" rel="noopener">Sportsnews ↗</a></div>`;
+          <div class="m"><span>🕒 ${esc(when)}${m.venue?.name ? ' · ' + esc(m.venue.name) : ''}</span><a href="${esc(location.origin)}" target="_blank" rel="noopener"><img src="/img/nxt-mark.png" alt="" style="height:14px;vertical-align:-2px;background:#fff;border-radius:3px;padding:1px 2px"> NXT Sports ↗</a></div>`;
         setTimeout(load, m.status.state === 'in' ? 60_000 : 15 * 60_000);
       } catch (e) {
         document.getElementById('w').textContent = 'Match unavailable right now.';

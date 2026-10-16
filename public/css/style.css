@@ -1,14 +1,18 @@
 :root {
-  --bg: #0b0f17;
-  --panel: #121826;
-  --card: #171f30;
-  --card-2: #1d2740;
-  --line: #26314a;
-  --text: #e8edf7;
-  --muted: #8b97b0;
-  --accent: #34d399;
-  --accent-2: #60a5fa;
-  --live: #ef4444;
+  /* NXT brand: black, silver, signal red */
+  --bg: #0a0a0c;
+  --panel: #141417;
+  --card: #1a1a1e;
+  --card-2: #232328;
+  --line: #2e2e35;
+  --text: #f2f2f4;
+  --muted: #9a9aa5;
+  --accent: #e10600;
+  --accent-ink: #ffffff;
+  --accent-2: #ff4d47;
+  --live: #ff2a1f;
+  --brand-bar: #ffffff;
+  --brand-ink: #0a0a0c;
   --win: #fbbf24;
   --radius: 14px;
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
@@ -17,15 +21,15 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f3f5f9;
+    --bg: #f4f4f6;
     --panel: #ffffff;
     --card: #ffffff;
-    --card-2: #f1f4fa;
-    --line: #e1e6ef;
-    --text: #0f172a;
-    --muted: #5b6780;
-    --accent: #059669;
-    --accent-2: #2563eb;
+    --card-2: #f0f0f3;
+    --line: #e2e2e7;
+    --text: #0a0a0c;
+    --muted: #5f5f6b;
+    --accent: #d10500;
+    --accent-2: #c00400;
     --shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
     color-scheme: light;
   }
@@ -48,21 +52,26 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 20px;
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line);
+  background: var(--brand-bar);
+  color: var(--brand-ink);
+  border-bottom: 3px solid var(--accent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 }
-.brand { display: flex; align-items: center; gap: 10px; }
-.logo { color: var(--live); font-size: 22px; animation: pulse 1.6s infinite; }
-.brand h1 { margin: 0; font-size: 20px; letter-spacing: -0.02em; }
-.tagline { margin: 0; color: var(--muted); font-size: 12px; }
+.brand { display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; }
+.brand-mark { height: 46px; width: auto; }
+.brand-word { height: 28px; width: auto; }
+.brand-sub { display: flex; flex-direction: column; line-height: 1.1; margin-left: 4px; padding-left: 10px; border-left: 2px solid var(--accent); }
+.sports-word { font-weight: 800; text-transform: uppercase; letter-spacing: 0.18em; font-size: 14px; }
+.logo { color: var(--accent); font-size: 9px; vertical-align: 1px; animation: pulse 1.6s infinite; }
+.tagline { margin: 0; color: #5f5f6b; font-size: 11px; }
+.topbar .muted { color: #5f5f6b; }
 .refresh { display: flex; align-items: center; gap: 12px; }
 .refresh-meta { display: flex; flex-direction: column; align-items: flex-end; font-size: 12px; }
 #updated { font-weight: 600; }
 
 .btn {
   border: 1px solid transparent; border-radius: 10px; cursor: pointer;
-  background: var(--accent); color: #04140d; font-weight: 600; font-size: 13px;
+  background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 13px;
   padding: 8px 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
   transition: transform 0.08s ease, filter 0.15s ease;
 }
@@ -78,7 +87,7 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
 
 /* ---------- ticker ---------- */
 .ticker { display: flex; align-items: center; border-bottom: 1px solid var(--line); background: var(--panel); overflow: hidden; }
-.ticker-label { flex: none; background: var(--live); color: #fff; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px; }
+.ticker-label { flex: none; background: var(--accent); color: #fff; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px; }
 .ticker-track { overflow: hidden; flex: 1; }
 .ticker-inner { display: inline-flex; gap: 14px; white-space: nowrap; padding: 8px 0; animation: scroll 160s linear infinite; font-size: 13px; }
 .ticker-inner:hover { animation-play-state: paused; }
@@ -95,7 +104,7 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
   border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 13px;
 }
 .chip small { color: var(--muted); font-size: 11px; }
-.chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+.chip.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .chip.active small { color: inherit; opacity: 0.7; }
 .live-pill { flex: none; display: inline-flex; align-items: center; gap: 6px; color: var(--live); font-weight: 700; font-size: 13px; margin-left: 6px; }
 .live-pill i, .status.in i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); display: inline-block; animation: pulse 1.2s infinite; }
@@ -105,7 +114,7 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); min-width: 0; }
 .news-panel { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow: auto; }
 .panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.panel-head h2 { margin: 0; font-size: 17px; }
+.panel-head h2 { margin: 0; font-size: 17px; text-transform: uppercase; letter-spacing: 0.04em; border-left: 4px solid var(--accent); padding-left: 8px; }
 .count { color: var(--muted); font-weight: 500; font-size: 14px; }
 .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -165,6 +174,8 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
 /* ---------- misc ---------- */
 .empty { padding: 30px; text-align: center; color: var(--muted); }
 .skeleton { height: 90px; border-radius: 12px; margin-bottom: 10px; background: linear-gradient(90deg, var(--card) 0%, var(--card-2) 50%, var(--card) 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+.footer-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--text); }
+.footer-brand img { height: 28px; width: auto; background: #fff; border-radius: 6px; padding: 2px 4px; }
 .footer { padding: 10px 20px 30px; color: var(--muted); font-size: 12px; text-align: center; }
 
 .code-dialog {
@@ -176,9 +187,9 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
 .dialog-head h3 { margin: 0; font-size: 16px; }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
 .tabs button { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
-.tabs button.active { background: var(--accent); border-color: var(--accent); color: #04140d; font-weight: 600; }
+.tabs button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .code {
-  background: #070a10; color: #d1fae5; border-radius: 10px; padding: 14px; margin: 0;
+  background: #070708; color: #f4f4f5; border-left: 3px solid var(--accent); border-radius: 10px; padding: 14px; margin: 0;
   max-height: 50vh; overflow: auto; white-space: pre-wrap; word-break: break-word;
   font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -205,6 +216,10 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
   .topbar { padding: 10px 12px; }
   .sports { padding: 10px 12px; }
   .tagline { display: none; }
+  .brand-mark { height: 34px; }
+  .brand-word { height: 20px; }
+  .sports-word { font-size: 11px; }
+  .refresh-meta { display: none; }
   .news-panel { position: static; max-height: none; }
   .view-switch { display: flex; margin: 0 12px 10px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
   .view-switch button { flex: 1; background: var(--panel); color: var(--muted); border: 0; padding: 9px; font-weight: 600; cursor: pointer; }

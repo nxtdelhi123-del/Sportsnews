@@ -1,4 +1,6 @@
-# Sportsnews — Global Sports Newsroom
+# NXT Sports — Global Sports Newsroom
+
+<img src="public/img/og.jpg" alt="NXT" width="480">
 
 Live scores and headlines from around the world, refreshed every 15 minutes, with a one-click **copy code** for every match.
 
