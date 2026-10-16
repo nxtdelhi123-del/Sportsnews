@@ -280,3 +280,35 @@ export const tsdbSoccerDay = {
     { idEvent: '2100004', strSport: 'Motorsport', strLeague: 'Formula 1', strEvent: 'United States Grand Prix', strHomeTeam: '', strAwayTeam: '', strStatus: 'Not Started', dateEvent: '2026-10-18', strTime: '19:00:00', strTimestamp: '2026-10-18T19:00:00' },
   ],
 };
+
+export const espnCricketHeader = {
+  sports: [
+    {
+      name: 'Cricket',
+      leagues: [
+        {
+          id: '1449890',
+          name: 'Australia tour of India 2026',
+          events: [
+            {
+              id: '1449900',
+              name: 'India vs Australia',
+              shortName: 'IND v AUS',
+              date: '2026-10-16T08:30Z',
+              status: 'in',
+              summary: 'Australia need 120 runs from 90 balls',
+              note: '2nd ODI',
+              location: 'Wankhede Stadium, Mumbai',
+              link: 'https://www.espn.in/cricket/match/_/gameId/1449900',
+              fullStatus: { type: { state: 'in', completed: false, detail: 'Australia need 120 runs from 90 balls' } },
+              competitors: [
+                { id: '6', homeAway: 'home', displayName: 'India', abbreviation: 'IND', score: '301/7 (50 ov)', logo: 'https://a.espncdn.com/i/teamlogos/cricket/500/6.png' },
+                { id: '2', homeAway: 'away', displayName: 'Australia', abbreviation: 'AUS', score: '182/4 (35 ov)', logo: 'https://a.espncdn.com/i/teamlogos/cricket/500/2.png' },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
