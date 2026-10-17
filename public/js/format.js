@@ -54,7 +54,7 @@ export const tierLine = (m) => (m.tier ? `${TIER_LABELS[m.tier] || m.tier}${m.ti
 
 export function statusLabel(m) {
   const s = m.status || {};
-  if (s.state === 'in') return `LIVE${s.short ? ' · ' + s.short : ''}`;
+  if (s.state === 'in') return `LIVE${s.short && !/^(live|in progress)$/i.test(s.short.trim()) ? ' · ' + s.short : ''}`;
   if (s.state === 'post') return s.short || s.detail || 'Final';
   // ESPN's pre-match detail is in US Eastern time; the date line carries the real time.
   const d = `${s.short} ${s.detail}`;
