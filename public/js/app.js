@@ -253,8 +253,8 @@ function renderMatches() {
   $('#matchCount').textContent = list.length ? `(${list.length.toLocaleString()}${liveN ? ` · ${liveN} live` : ''}${vimpN ? ` · ${vimpN} VIMP` : ''})` : '';
   $('#scoresHint').innerHTML =
     state.sport === 'all'
-      ? 'Showing top competitions plus <b>every live match in the world</b>. Pick a sport for its full schedule.'
-      : `Every ${esc(sportOf(state.sport).label)} match worldwide · yesterday, today and tomorrow.`;
+      ? 'Showing the <b>top competitions worldwide</b>: yesterday, today and tomorrow. Pick a sport for its full list.'
+      : `${esc(sportOf(state.sport).label)} worldwide · yesterday, today and tomorrow.`;
   if (!list.length) {
     box.innerHTML = `<div class="empty">${ds.matches.length ? 'No matches for this filter.' : `No ${state.sport === 'all' ? '' : esc(sportOf(state.sport).label) + ' '}matches right now — check the headlines.`}</div>`;
     return;
