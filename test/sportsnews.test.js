@@ -5,7 +5,7 @@ import { normalizeScoreboard } from '../lib/espn.js';
 import { normalizeCricinfo, normalizeCricinfoRss } from '../lib/cricket.js';
 import { parseFeed, classify } from '../lib/rss.js';
 import { mergeNews, sortMatches } from '../lib/feeds.js';
-import { formatMatch, scoreline, toText } from '../public/js/format.js';
+import { formatMatch, scoreline, toText, statusLabel } from '../public/js/format.js';
 import * as fx from './fixtures.js';
 
 const NOW = Date.parse('2026-10-16T20:00:00Z');
@@ -55,6 +55,8 @@ test('cricinfo matches normalize with scores and link', () => {
   assert.equal(m.status.state, 'in');
   assert.equal(m.home.score, '301/7 (50 ov)');
   assert.equal(m.league.name, 'Australia tour of India 2026');
+  const liveOnly = normalizeEspnCricket({ sports: [{ leagues: [{ name: 'x', events: [{ ...fx.espnCricketHeader.sports[0].leagues[0].events[0], summary: 'LIVE', fullStatus: {} }] }] }] })[0];
+  assert.equal(statusLabel(liveOnly), 'LIVE');
   assert.match(m.link, /australia-tour-of-india-2026-1449890\/india-vs-australia-2nd-odi-1449900\/live-cricket-score$/);
 });
 
@@ -447,6 +449,11 @@ test('matches are labelled VIMP / IMP / not important', () => {
   assert.equal(t({ sport: 'combat', league: { name: 'UFC' }, name: 'UFC Fight Night: Smith vs Jones', kind: 'field' }), 'vimp'); // "jones" is marquee
   assert.equal(t({ sport: 'volleyball', league: { name: 'Plusliga' }, name: 'x', home: { name: 'Resovia' }, away: { name: 'Skra' } }), 'low');
   assert.match(matchTier(vs('UEFA Champions League', 'Bayern Munich', 'Celtic')).reason, /Champions League/);
+  // Seen live: a World Cup qualifying league for associate nations is not the World Cup.
+  assert.equal(t({ ...vs("ICC Men's Cricket World Cup League 2", 'Canada', 'Nepal'), sport: 'cricket' }), 'low');
+  assert.equal(t({ ...vs('ICC Cricket World Cup Qualifier', 'Scotland', 'Oman'), sport: 'cricket' }), 'low');
+  assert.equal(t({ ...vs("ICC Men's T20 World Cup", 'India', 'Pakistan'), sport: 'cricket' }), 'vimp');
+  assert.equal(t({ ...vs('FIFA World Cup', 'Brazil', 'Croatia'), note: 'Quarter-final' }), 'vimp');
 });
 
 test('headlines are labelled by who and what', () => {
@@ -482,6 +489,8 @@ test('ESPN cricket header feed normalizes and outranks the Cricinfo RSS copy', (
   assert.equal(m.status.state, 'in');
   assert.equal(m.home.score, '301/7 (50 ov)');
   assert.equal(m.league.name, 'Australia tour of India 2026');
+  const liveOnly = normalizeEspnCricket({ sports: [{ leagues: [{ name: 'x', events: [{ ...fx.espnCricketHeader.sports[0].leagues[0].events[0], summary: 'LIVE', fullStatus: {} }] }] }] })[0];
+  assert.equal(statusLabel(liveOnly), 'LIVE');
   assert.equal(m.note, '2nd ODI');
   assert.equal(m.venue.name, 'Wankhede Stadium, Mumbai');
   // Cricinfo's live-score RSS has no timestamps: the duplicate must still be dropped.

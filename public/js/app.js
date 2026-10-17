@@ -179,7 +179,8 @@ function teamRow(t = {}, m) {
   const score = t.score !== '' && t.score != null ? t.score : (t.linescores || []).join(' ');
   const showScore = m.status.state !== 'pre' && score !== '';
   const sets = t.linescores?.length && t.score !== undefined && t.score !== '' ? `<small class="sets">${esc(t.linescores.join(' '))}</small>` : '';
-  return `<div class="team${t.winner ? ' winner' : ''}">${logo}<span class="tname">${esc(t.name || 'TBD')}${t.record ? ` <small>${esc(t.record)}</small>` : ''}</span><span class="tscore">${sets}${showScore ? esc(score) : ''}</span></div>`;
+  const long = showScore && String(score).length > 8;
+  return `<div class="team${t.winner ? ' winner' : ''}${long ? ' long' : ''}">${logo}<span class="tname">${esc(t.name || 'TBD')}${t.record ? ` <small>${esc(t.record)}</small>` : ''}</span><span class="tscore">${sets}${showScore ? esc(score) : ''}</span></div>`;
 }
 
 function matchCard(m) {

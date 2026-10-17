@@ -252,6 +252,9 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
 .note { font-size: 12px; color: var(--accent-2); font-weight: 500; }
 .card-body { display: flex; flex-direction: column; gap: 6px; }
 .team { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 9px; }
+/* Cricket-length scores: name on the first line, score underneath. */
+.team.long { grid-template-columns: 26px 1fr; row-gap: 2px; }
+.team.long .tscore { grid-column: 2; font-size: 17px; }
 .team img { width: 26px; height: 26px; object-fit: contain; }
 .badge { width: 26px; height: 26px; border-radius: 7px; background: var(--card-2); border: 1px solid var(--line); font-size: 9px; font-weight: 700; display: grid; place-items: center; color: var(--muted); }
 .tname { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
