@@ -957,3 +957,20 @@ test('AI prompts carry the page style, the exact words and the anti-AI rules', (
   assert.match(newsPoster({ ...n, source: 'x', link: 'https://x' }), /PROMPT FOR AI[\s\S]*BIG WORD: "BRONZE"/);
   assert.match(formatMatch(m, 'prompt-musc'), /musc_reddevils/);
 });
+
+test('AI prompts: no-photo layouts say so, scorers sit under their team, fixed words are listed', () => {
+  const m = { kind: 'match', date: '2026-10-18T13:00:00Z', status: { state: 'post' }, home: { name: 'Leeds United', abbr: 'LEE', score: '1' }, away: { name: 'Manchester United', abbr: 'MAN', score: '1' }, league: { name: 'Premier League' }, venue: { name: 'Elland Road', city: 'Leeds' }, events: [{ type: 'Goal', player: 'Bryan Mbeumo / Youri Tielemans', minute: "35'", team: 'Manchester United' }, { type: 'Goal - Volley', player: 'Dominic Calvert-Lewin / Tarik Muharemovic', minute: "51'", team: 'Leeds United' }] };
+  const p = posterPrompt(m, { brand: 'tsb' });
+  assert.match(p, /This layout uses no photo/);
+  assert.doesNotMatch(p, /I am attaching a real photo/);
+  assert.doesNotMatch(p, /METAL:/);
+  assert.match(p, /HEADLINE: "Honours even at Elland Road\."/);
+  assert.match(p, /SCORERS UNDER LEEDS UNITED: "Dominic Calvert-Lewin 51'"/);
+  assert.doesNotMatch(p, /Tielemans|Muharemovic/, 'assists are not scorers');
+  assert.match(p, /MASTHEAD: "THE SPORTS BINGE"/);
+  assert.match(p, /STATUS LABEL: "FULL TIME"/);
+  assert.match(p, /COMPETITION: "PREMIER LEAGUE · 2026\/27"/);
+  assert.match(p, /EMPTY square outline/);
+  assert.match(p, /AI prompt · MUSC/);
+  assert.match(posterPrompt(m, { brand: 'musc' }), /HEADLINE: "ONE POINT\. MORE QUESTIONS\."/);
+});
