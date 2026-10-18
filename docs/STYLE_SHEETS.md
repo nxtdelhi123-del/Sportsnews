@@ -1,0 +1,154 @@
+# Style sheets — @thesportsbinge and @musc_reddevils
+
+Read from 96 TSB grid tiles and 24 MUSC grid tiles (owner's screenshots, 18 Oct 2026).
+Tiles are ~306 px wide, so sizes are measured as fractions of the canvas and rounded;
+fonts are identified by shape and matched with free Google Fonts.
+
+## Shared facts
+
+- **Canvas.** Both pages' posts fill Instagram's 3:4 grid tile edge to edge with nothing
+  important cropped, so they are designed at **1080 × 1440** (3:4). The Studio's default
+  post size becomes 3:4; 4:5, 9:16 and 1:1 stay as options.
+- **Safe margins.** ~4.5% of the width (48 px) for badges and labels; headlines may run
+  to ~3% (32 px) when they are meant to fill the width.
+- **Grid behaviour.** Neighbouring posts never share a layout: the headline flips between
+  top and bottom, the colour of the metal changes, cream posts break up runs of dark ones.
+
+## @thesportsbinge
+
+### Type (matched)
+| Role | Theirs (by shape) | Studio |
+| --- | --- | --- |
+| Hero word (BRONZE, SILVER, INDIA, KNOCKED OUT) | extra-condensed Didone, black weight, all caps, tight | Noto Serif Display ExtraCondensed Black |
+| Name above the metal (GULVEER SINGH, NARENDER BERWAL) | same family, ~45–55% of the hero size | same |
+| Number posts (15,000 · 698. · 37) | wide Didone, black weight, gold | Noto Serif Display Black (normal width) |
+| Editorial headline (Spain take Wembley., Wembley gets a heavyweight opener.) | semi-condensed Didone, heavy, sentence case, tight leading | Noto Serif Display SemiCondensed ExtraBold |
+| Quote | transitional serif bold, sentence case, gold middle phrase | Noto Serif Display Bold |
+| Masthead THE SPORTS BINGE | extra-condensed Didone, black | Noto Serif Display ExtraCondensed Black |
+| Spaced labels (MIXED 4 × 100M RELAY, MEN'S 5000M, SEMI-FINAL) | geometric sans or light serif caps, tracking 0.25–0.4 em | Montserrat Medium/Bold, Noto Serif Display Medium |
+| Body (explainers, stat captions) | small serif or sans, 2–4 lines | Montserrat Medium / Barlow |
+
+### Colour and metal
+- Ink #121212 on cream #F1ECE2; white #FFFFFF on dark photos; navy #0E1C3D and
+  green #0F5B2E on the cream VS poster.
+- Metals are **textured**: a brushed vertical gradient with a bright band a third of the
+  way down and a darker foot, plus fine grain; a soft dark shadow lifts them off photos.
+  Gold #F7E3A1→#C8962E→#7A5512, silver #FFFFFF→#B9BCC4→#6E7079,
+  bronze #F6C49A→#C77A44→#6E3714.
+- Red #D7191C only for "breaking" words (FOUND GUILTY, THE VERDICT).
+- Tricolour appears as light and texture (a flag in the photo, brush strokes of saffron
+  and green on cream, a three-colour rule), not as a flat flag chip.
+
+### Photo
+- Full-bleed, sharp, **graded**: contrast up, blacks deep, saturation slightly up, the
+  background darkened so the athlete pops (often a radial darkening behind them).
+- Subject placed opposite the text: headline top → athlete from mid-frame down;
+  headline bottom → athlete's head in the upper third.
+- A dark gradient (to ~85% black) under any text over the photo.
+
+### Kinds
+1. **Medal, name on top** (INDIA / BRONZE, GULVEER SINGH / BRONZE, CHAUDHARY / BRONZE):
+   name 6–8% of height, metal 12–15% of height filling the width, event in spaced caps
+   between two hairlines, athlete below; bottom-left block of 3–4 short lines (THREE
+   MEDALS. ONE ASIAN GAMES.), a stat or time, a medal bottom-right.
+2. **Medal, metal at the bottom** (SILVER, MANPREET BRONZE, INDIA GOLD): photo fills the top
+   two thirds; the metal spans the full width at the bottom; one spaced line under it
+   (GULVEER SINGH WINS SILVER AT ASIAN GAMES 2026); event and a boxed final time in the
+   footer row.
+3. **Medal phrase** (DOUBLE PODIUM, TWO FINALS. TWO SILVERS., DOUBLE SILVER FOR GULVEER.):
+   centred two-line phrase in gold, a spaced subline, then two stat columns split by a
+   rule (SILVER 85.72m | BRONZE 84.35m).
+4. **Number** (15,000 ODI RUNS, 698. ASIAN GAMES RECORD, 42 YEARS.): the number in wide
+   gold Didone at 18–22% of height, unit line in white condensed, one spaced line
+   (ONLY TWO HAVE BEEN HERE.), photo under; a left column of stats, a bottom bar of
+   three stats split by rules.
+5. **Quote**: photo top 55–60%; a gold opening quote mark; 3–4 lines of serif with the
+   middle phrase in gold; name in spaced caps; a smaller second quote and an
+   "ON THE …" footer.
+6. **Result, cream** (Spain take Wembley., France leave it late.): small competition line
+   between hairlines, masthead THE SPORTS BINGE across the width, headline centred,
+   FULL TIME label between hairlines, flag · score · flag, team names in spaced caps,
+   round/group line, @thesportsbinge.
+7. **Preview** (a) photo of the two stars filling the top, a torn cream band at the bottom
+   with the serif headline, flags with VS, date/time/venue in small caps; (b) cream top
+   half with INDIA vs PAKISTAN in condensed Didone coloured per team, SEMI-FINAL spaced,
+   two fact columns, photo at the bottom.
+8. **Tally** (INDIA MEDAL TALLY 37, INDIA'S MEDAL COUNT 45): cream, INDIA large, the
+   number huge in navy with a tricolour sweep, TOTAL MEDALS spaced, medals with counts in
+   four columns split by rules, a small disclaimer; dark variant with a standings table.
+9. **Breaking / verdict** (MAN CITY FOUND GUILTY …): dark, BREAKING REPORT in red spaced caps
+   between hairlines, headline lines stepping down in size, the key phrase in red,
+   explainer with a red dash, "Reported by …", photo of the club/stadium in the bottom
+   half graded cold.
+10. **Carousel cover** (THE MEDALS TELL YOU WHO WON.): cream, type only, meta row at the
+    top, lines mixing ink and bronze-gradient words, a tricolour dash between the two
+    halves, a small footer with an arrow.
+
+### Headlines
+2–6 words, a full stop, capitals except editorial results/previews (sentence case).
+
+## @musc_reddevils
+
+### Type (matched)
+| Role | Theirs | Studio |
+| --- | --- | --- |
+| Main headline (HISTORY FOR SALE?, UNITED KA CONTROL KAHAN HAI?) | ultra-condensed grotesque, heavy, caps, cream and red | Anton |
+| Slanted headline (VAR OFFICIAL AXED?) | same, italic with a forward slant | Anton, skewed −10° |
+| Editorial (COULD COME BACK TO OLD TRAFFORD?, RIVALS UNITED) | condensed serif-ish caps | Noto Serif Display ExtraCondensed Black |
+| Signing (A new Red.) | heavy Didone, sentence case, red word | Noto Serif Display Black |
+| Labels (OLD TRAFFORD PITCH, BREAKING) | condensed sans caps, spaced, between rules | Oswald Bold |
+
+### Colour
+Red #DA291C (headline words, rules, tags), cream #F3E6D0 (headline words on photos),
+black #0B0B0D, a deep red grade over every photo (shadows pushed to maroon).
+
+### Kinds
+1. **Headline over photo**: photo full-bleed with a red-to-black grade; headline at the
+   bottom, 2–4 lines, alternating cream and red lines, centred (HISTORY FOR SALE?) or
+   left-aligned with a small subhead and two-line explainer (JJ GABRIEL REQUESTS UNITED
+   EXIT); optional slanted version with a red tag (OFFSIDE?).
+2. **Matchday**: two player photos facing each other on red | rival colour, competition
+   badge top centre, round label, crests with VS, date/time in yellow, WATCH LIVE ONLY ON
+   FANCODE.
+3. **Result**: photos of the scorers, crest + big score, scorers with minutes in a column.
+4. **Statement on red**: a red panel, MATCHDAY label, two-line cream statement in a
+   condensed grotesque (A RESPONSE. NOT EXCUSES.), fixture details small.
+5. **Signing, cream**: club line and ACADEMY SIGNING at the top, A new / Red. in a heavy
+   Didone, the name spaced, one line of context, photo at the bottom.
+6. **Line-ups** (CONFIRMED XI / PREDICTED XI) need the starting eleven, which the
+   newsroom does not reliably carry; not built in this round.
+
+## Side-by-side scores (18 Oct 2026)
+
+Each kind rendered by the Studio from the same story and the photo from the page's own
+post, next to the page's post (`docs/compare-tsb.jpg`, `docs/compare-musc.jpg`). Scored
+1–10 on layout, type, photo, colour and detail.
+
+| Template | Layout | Type | Photo | Colour | Detail | Score |
+| --- | --- | --- | --- | --- | --- | --- |
+| tsb-medal-top | 9 | 8 | 8 | 8 | 7 | 8.0 |
+| tsb-medal-bottom | 9 | 8 | 8 | 8 | 8 | 8.2 |
+| tsb-phrase | 9 | 8 | 8 | 8 | 8 | 8.2 |
+| tsb-number | 8 | 8 | 8 | 8 | 6 | 7.6 |
+| tsb-quote | 9 | 8 | 9 | 8 | 8 | 8.4 |
+| tsb-cream | 9 | 8 | 9 | 9 | 8 | 8.6 |
+| tsb-result-photo | 8 | 8 | 8 | 8 | 8 | 8.0 |
+| tsb-preview | 8 | 8 | 8 | 8 | 7 | 7.8 |
+| tsb-vs | 8 | 8 | 8 | 7 | 7 | 7.6 |
+| tsb-tally | 9 | 8 | 8 | 8 | 8 | 8.2 |
+| tsb-verdict | 9 | 8 | 8 | 8 | 8 | 8.2 |
+| tsb-cover | 9 | 8 | 8 | 8 | 8 | 8.2 |
+| musc-head | 9 | 8 | 8 | 8 | 8 | 8.2 |
+| musc-head-left | 9 | 8 | 8 | 8 | 8 | 8.2 |
+| musc-head-slant | 8 | 8 | 8 | 8 | 7 | 7.8 |
+| musc-matchday | 8 | 8 | 8 | 8 | 7 | 7.8 |
+| musc-result | 7 | 8 | 7 | 8 | 7 | 7.4 |
+| musc-statement | 8 | 8 | 8 | 8 | 7 | 7.8 |
+| musc-signing | 9 | 9 | 9 | 9 | 8 | 8.8 |
+
+What keeps the six below 8: **detail** that the news feed does not carry (the number
+post's extra career stats, the VS post's real flag photos, crests in the matchday test
+because the comparison had no logo files; the live site gets ESPN crests), and the MUSC
+result, whose reference is a reaction video frame no template can reproduce. Type is
+capped at 8 everywhere because the page's display face is a commercial condensed Didone;
+Noto Serif Display ExtraCondensed with a stroke rim is the closest free match.

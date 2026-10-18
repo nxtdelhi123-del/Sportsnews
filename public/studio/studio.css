@@ -39,3 +39,13 @@ body.studio::before { opacity: 0.05; }
 .paste-box summary { cursor: pointer; font-weight: 600; }
 .paste-box textarea { width: 100%; box-sizing: border-box; margin: 8px 0; background: var(--card-2); border: 1px solid var(--line-strong); color: var(--text); border-radius: 10px; padding: 8px 10px; font: 14px/1.4 inherit; font-family: inherit; }
 .paste-box .small { font-size: 12px; margin: 6px 0 0; }
+
+/* ---- move and zoom the photo ---- */
+.nudge { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nudge[hidden] { display: none; }
+.nudge .btn.small { padding: 4px 10px; min-width: 0; }
+.nudge .zoom { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.nudge .zoom input { width: 120px; }
+.pack-preview img { touch-action: none; cursor: grab; }
+.seg button { white-space: nowrap; }
+#tplSeg { flex-wrap: wrap; }

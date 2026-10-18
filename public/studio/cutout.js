@@ -331,7 +331,8 @@ export async function findSubject(image, { maxSide = 1600, onProgress } = {}) {
 
 // The photo cropped to the poster's shape with the subject placed well: its centre of
 // mass lands around 38% down and the box stays inside the frame. Graded a touch.
-export function cropHero(image, subject, aspect, { width = 1080, grade = true, blur = 0, dim = 0.72, band = null } = {}) {
+// `nudge` is the owner's adjustment on the desk: zoom (1 = fit) and a pan as fractions of the frame.
+export function cropHero(image, subject, aspect, { width = 1080, grade = true, blur = 0, dim = 0.72, band = null, nudge = null } = {}) {
   const sw = image.naturalWidth;
   const sh = image.naturalHeight;
   const tw = width;
@@ -340,7 +341,8 @@ export function cropHero(image, subject, aspect, { width = 1080, grade = true, b
   const y0 = band ? Math.round(band.top * sh) : 0;
   const y1 = band ? Math.round(band.bottom * sh) : sh;
   const usableH = Math.max(1, y1 - y0);
-  const scale = Math.max(tw / sw, th / usableH);
+  const zoom = Math.max(1, Math.min(3, nudge?.zoom || 1));
+  const scale = Math.max(tw / sw, th / usableH) * zoom;
   const cw = tw / scale;
   const ch = th / scale;
   const box = subject?.box;
@@ -356,6 +358,10 @@ export function cropHero(image, subject, aspect, { width = 1080, grade = true, b
     if (bx1 - bx0 < cw) x = Math.min(Math.max(x, bx1 - cw), bx0);
     y = Math.min(y, by0 - ch * 0.06);
   }
+  if (nudge) {
+    x -= (nudge.dx || 0) * cw;
+    y -= (nudge.dy || 0) * ch;
+  }
   x = Math.max(0, Math.min(sw - cw, x));
   y = Math.max(y0, Math.min(y1 - ch, y));
   const c = canvasOf(tw, th);
@@ -370,8 +376,8 @@ export function cropHero(image, subject, aspect, { width = 1080, grade = true, b
   }
   ctx.filter = 'none';
   // How much the photo had to be blown up to fill the shape (1 = none).
-  const zoom = scale / Math.max(tw / sw, th / sh);
-  return { hero: c.toDataURL('image/jpeg', 0.86), subjectY: box ? (cy - y) / ch : 0.5, zoom, crop: { x: x / sw, y: y / sh, w: cw / sw, h: ch / sh } };
+  const blowUp = scale / Math.max(tw / sw, th / sh);
+  return { hero: c.toDataURL('image/jpeg', 0.86), subjectY: box ? (cy - y) / ch : 0.5, zoom: blowUp, crop: { x: x / sw, y: y / sh, w: cw / sw, h: ch / sh } };
 }
 
 // The subject alone, cropped to its box with a little margin, transparent elsewhere.
@@ -383,6 +389,27 @@ export function cutoutOf(image, subject) {
   fctx.drawImage(image, 0, 0, W, H);
   const img = fctx.getImageData(0, 0, W, H);
   for (let i = 0; i < W * H; i++) img.data[i * 4 + 3] = curve(mask[i * 4]);
+  // Choke the edge by a pixel (min of the 4 neighbours) so no background fringe survives.
+  const a0 = new Uint8ClampedArray(W * H);
+  for (let i = 0; i < W * H; i++) a0[i] = img.data[i * 4 + 3];
+  for (let y = 1; y < H - 1; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (a0[i] === 0 || a0[i] === 255) continue;
+      img.data[i * 4 + 3] = Math.min(a0[i], a0[i - 1], a0[i + 1], a0[i - W], a0[i + W]);
+    }
+  }
+  // Halos: semi-transparent edge pixels still carry the old background's colour; darken
+  // them in proportion so a bright sky or a white wall doesn't glow round the athlete.
+  for (let i = 0; i < W * H; i++) {
+    const a = img.data[i * 4 + 3] / 255;
+    if (a > 0 && a < 0.95) {
+      const k = 0.55 + 0.45 * a;
+      img.data[i * 4] *= k;
+      img.data[i * 4 + 1] *= k;
+      img.data[i * 4 + 2] *= k;
+    }
+  }
   const m = Math.round(Math.max(W, H) * 0.03);
   const cx0 = Math.max(0, Math.round(box.x * W) - m);
   const cy0 = Math.max(0, Math.round(box.y * H) - m);

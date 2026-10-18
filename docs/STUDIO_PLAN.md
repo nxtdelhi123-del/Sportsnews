@@ -273,6 +273,16 @@ athlete cut out instead"). Checked in headless Chromium with a poster that carri
 text through the middle (athlete cut out, text gone), a photo with a caption band at
 the bottom (band cropped away) and a plain photo (unchanged).
 
+## 2.10 Page-matched templates — 18 Oct 2026
+
+Style sheets, annotated references and side-by-side scores: `docs/STYLE_SHEETS.md`.
+New type engine (`lib/studio/type.js`: opentype.js measuring, fill-the-measure,
+balanced line breaks, brushed-metal textures), shared kit (`lib/studio/kit.js`), 12 TSB
+layouts (`lib/studio/tsb-templates.js`) and 7 MUSC layouts (`lib/studio/musc-templates.js`),
+chosen per story with variants rotating so neighbours differ; posts default to 3:4
+(1080×1440), the grid tile shape. The desk lists every layout that suits the story, and
+the photo can be dragged, nudged and zoomed; cut-out edges are choked and de-haloed.
+
 ## 3. Phases
 
 ### Phase 1 — Posters from live data (1 session) — DONE 2026-10-18 (PR #12)
