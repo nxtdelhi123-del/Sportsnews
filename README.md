@@ -16,6 +16,18 @@ Live scores and headlines from around the world, refreshed every 10 minutes, wit
 - **Copy on headlines** gives the headline, summary, source and image, plus a "breaking news" poster prompt.
 - Updates every 10 minutes (:00, :10, :20, :30, :40, :50). The page shows a countdown and refreshes itself.
 
+## NXT Studio (Phase 1)
+
+`/studio` turns today's stories into Instagram posts for two pages, @thesportsbinge and @musc_reddevils. For each page it ranks the newsroom's matches and headlines by that page's interests (`lib/studio/brands/*.js`, `lib/studio/score.js`), writes a headline, explainer, caption and hashtags in the page's voice (`lib/studio/writer.js`: formulas, improved by Claude when `ANTHROPIC_API_KEY` is set), and draws a 1080×1350 poster from a template that copies the page's look (`lib/studio/templates.js`, rendered server-side with satori + resvg). Open a story to switch template or size (post, story, square), edit the words, copy the caption and download the PNG. "Not this" records a rejection for the learning loop (Phase 2 stores it). The full plan is in `docs/STUDIO_PLAN.md`.
+
+Brand badges: put `tsb-badge.png` and `musc-crest.png` (transparent PNG, square) in `public/studio/brand/`; until then a vector stand-in is drawn.
+
+| Endpoint | Description |
+| --- | --- |
+| `GET /api/studio/candidates?brand=tsb\|musc` | Ranked post packs with formula words |
+| `GET /api/studio/render?brand=&key=&size=post\|story\|square&template=&w=` | PNG of a pack; `&json=1` returns the pack with Claude-written words |
+| `POST /api/studio/feedback` | `{ brand, key, decision: approve\|reject\|edit }` |
+
 ## API
 
 | Endpoint | Description |

@@ -531,3 +531,83 @@ test('Sofascore is left alone for 30 minutes after a 403', async () => {
   await assert.rejects(sofaGet('/sport/tennis/events/live'), /blocked here/);
   assert.equal(calls, after);
 });
+
+// ---- Studio ----
+import { BRANDS, scoreStory, postType } from '../lib/studio/score.js';
+import { writeFormula } from '../lib/studio/writer.js';
+import { pickTemplate, TEMPLATES } from '../lib/studio/templates.js';
+import { renderPack } from '../lib/studio/render.js';
+
+const NOWS = Date.parse('2026-10-17T16:30:00Z');
+const matchFT = () => {
+  const [m] = normalizeScoreboard(fx.soccerScoreboard, EPL, NOWS);
+  m.status = { state: 'post', detail: 'FT', short: 'FT', completed: true };
+  m.home.winner = true;
+  m.tier = 'vimp';
+  return m;
+};
+
+test('studio: scoring follows each page’s interests', () => {
+  const ars = matchFT();
+  const tsbScore = scoreStory(ars, BRANDS.tsb, NOWS);
+  assert.equal(tsbScore.type, 'result');
+  assert.ok(tsbScore.score > 2, 'a Premier League result with Arsenal is worth posting on TSB');
+  const indiaNews = { kind: 'news', id: 'n1', title: 'India beat Australia to level the ODI series', summary: '', sport: 'cricket', published: new Date(NOWS - 1800e3).toISOString(), tier: 'vimp' };
+  assert.ok(scoreStory(indiaNews, BRANDS.tsb, NOWS).score > scoreStory(ars, BRANDS.tsb, NOWS).score, 'India cricket outranks a Premier League result on TSB');
+  assert.ok(scoreStory(ars, BRANDS.musc, NOWS).score < 1, 'a non-United match is nearly worthless to MUSC');
+  const utd = { ...ars, id: 'u', away: { ...ars.away, name: 'Manchester United', abbr: 'MUN' }, name: 'Manchester United at Arsenal' };
+  assert.ok(scoreStory(utd, BRANDS.musc, NOWS).score > 5, 'a United match is top priority for MUSC');
+  const youth = { ...utd, id: 'y', league: { path: 'x', name: 'Premier League 2' }, name: 'Manchester United U21 at Arsenal U21' };
+  assert.equal(scoreStory(youth, BRANDS.musc, NOWS).score, 0);
+  assert.equal(postType({ kind: 'news', title: 'Parul Chaudhary wins bronze in 5000m' }, BRANDS.tsb), 'medal');
+  assert.equal(postType({ kind: 'news', title: 'India medal tally rises to 45' }, BRANDS.tsb), 'tally');
+  assert.equal(postType({ kind: 'news', title: 'Kohli fastest to 15,000 ODI runs' }, BRANDS.tsb), 'milestone');
+});
+
+test('studio: formula words follow the brand voice', () => {
+  const esp = { ...matchFT(), home: { name: 'England', abbr: 'ENG', score: '2' }, away: { name: 'Spain', abbr: 'ESP', score: '3', winner: true }, venue: { name: 'Wembley Stadium', city: 'London', country: 'England' }, league: { path: 'soccer/uefa.nations', name: 'UEFA Nations League' }, note: 'League A', events: [] };
+  const w = writeFormula(esp, 'result', BRANDS.tsb);
+  assert.equal(w.headline, 'Spain take Wembley.');
+  assert.match(w.explainer, /^Spain beat England 3–2 at Wembley Stadium\./);
+  assert.ok(w.hashtags.includes('#ENGESP') && w.hashtags.includes('#TheSportsBinge'));
+  assert.doesNotMatch(w.headline, /[!?]/);
+  const utd = { ...esp, home: { name: 'Liverpool', abbr: 'LIV', score: '1' }, away: { name: 'Manchester United', abbr: 'MUN', score: '2', winner: true }, venue: { name: 'Anfield', city: 'Liverpool' } };
+  const mw = writeFormula(utd, 'result', BRANDS.musc);
+  assert.equal(mw.headline, 'THREE POINTS. NO DRAMA.');
+  assert.ok(mw.hashtags.includes('#MUFC'));
+  assert.equal(writeFormula({ ...utd, away: { ...utd.away, score: '0', winner: false }, home: { ...utd.home, score: '3', winner: true } }, 'result', BRANDS.musc).headline, 'A NIGHT TO FORGET VS LIV.');
+  const news = writeFormula({ kind: 'news', title: 'Virat Kohli becomes fastest to 15,000 ODI runs: the numbers', summary: 'x', sport: 'cricket', source: 'ESPNcricinfo' }, 'milestone', BRANDS.tsb);
+  assert.equal(news.headline, 'Virat Kohli becomes fastest to 15,000.');
+  assert.deepEqual(news.accentWords, ['15,000']);
+});
+
+test('studio: every template renders a PNG', async () => {
+  const esp = { ...matchFT(), home: { name: 'England', abbr: 'ENG', score: '2' }, away: { name: 'Spain', abbr: 'ESP', score: '3', winner: true }, venue: { name: 'Wembley Stadium', city: 'London' }, league: { path: 'soccer/uefa.nations', name: 'UEFA Nations League' } };
+  const packFor = (brand, story, type) => ({ brand, type, words: writeFormula(story, type, brand), story, when: { day: 'SAT, 18 OCT', time: '5:00 PM IST' }, assets: {} });
+  for (const [name, brand, story, type] of [['tsb-cream', BRANDS.tsb, esp, 'result'], ['tsb-dark', BRANDS.tsb, { kind: 'news', id: 'k', title: 'Kohli fastest to 15,000 ODI runs', summary: 'In 303 innings.', sport: 'cricket', source: 'x' }, 'milestone'], ['musc-result', BRANDS.musc, esp, 'result'], ['musc-matchday', BRANDS.musc, { ...esp, status: { state: 'pre' } }, 'preview']]) {
+    const { png, width, height } = await renderPack(packFor(brand, story, type), { size: 'post', template: name });
+    assert.ok(png.length > 20_000, `${name} produced ${png.length} bytes`);
+    assert.equal(png.readUInt32BE(16), 1080, `${name} width`);
+    assert.deepEqual([width, height], [1080, 1350]);
+  }
+  const story = await renderPack(packFor(BRANDS.tsb, esp, 'result'), { size: 'story' });
+  assert.equal(story.height, 1920);
+  assert.equal(pickTemplate({ brand: BRANDS.tsb, type: 'result', story: esp }), 'tsb-cream');
+  assert.equal(pickTemplate({ brand: BRANDS.musc, type: 'preview', story: esp }), 'musc-matchday');
+  assert.ok(Object.keys(TEMPLATES).length >= 4);
+});
+
+test('studio: render endpoint accepts every story key shape', async () => {
+  mockFetchGlobal();
+  const { default: render } = await import('../api/studio/render.js?keys');
+  for (const key of ['match:soccer/eng.1:740001', 'match:sofa/football:12345678', 'match:cricket-espn/1449890:1449900', 'news:some-headline-id']) {
+    const res = mockRes();
+    await render({ query: { brand: 'tsb', key, json: '1' }, headers: { host: 'x' } }, res);
+    assert.notEqual(res.statusCode, 400, `${key} should be a valid key`);
+  }
+  const res = mockRes();
+  await render({ query: { brand: 'tsb', key: 'match:soccer/eng.1:740001', w: '540' }, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.headers['content-type'], 'image/png');
+  assert.equal(res.body.readUInt32BE(16), 540, 'thumbnail width honoured');
+});

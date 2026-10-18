@@ -1,0 +1,24 @@
+body.studio::before { opacity: 0.05; }
+.brand-tabs { display: flex; gap: 8px; padding: 14px 24px 0; }
+.brand-tabs button { border: 1px solid var(--line-strong); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 8px 16px; font-weight: 600; cursor: pointer; font-family: var(--display); font-size: 16px; letter-spacing: 0.04em; text-transform: uppercase; }
+.brand-tabs button.active { background: linear-gradient(180deg, var(--red-hot), var(--red-deep)); color: #fff; border-color: transparent; }
+.studio-main { padding: 12px 24px 40px; }
+.packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.pack { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
+.pack:hover { transform: translateY(-2px); border-color: var(--line-strong); }
+.pack.rejected { opacity: 0.35; }
+.pack .thumb { aspect-ratio: 4 / 5; background: var(--card-2); display: block; width: 100%; object-fit: cover; }
+.pack .info { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pack .h { font-family: var(--display); font-weight: 700; font-size: 18px; line-height: 1.1; }
+.pack .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ptype { font-family: var(--display); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid var(--line-strong); border-radius: 5px; padding: 0 6px; }
+.score { color: var(--red-hot); font-weight: 700; }
+.pack-dialog { width: min(1040px, calc(100vw - 24px)); border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--bg-2); color: var(--text); padding: 16px; border-top: 3px solid var(--red); }
+.pack-dialog::backdrop { background: rgba(0, 0, 0, 0.65); }
+.pack-body { display: grid; grid-template-columns: minmax(0, 420px) 1fr; gap: 18px; margin-top: 10px; }
+.pack-preview img { width: 100%; border-radius: 10px; background: var(--card-2); display: block; }
+.pack-fields { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pack-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.pack-fields input, .pack-fields textarea { background: var(--card-2); border: 1px solid var(--line-strong); color: var(--text); border-radius: 10px; padding: 8px 10px; font: 14px/1.4 inherit; font-family: inherit; }
+.pack-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 760px) { .pack-body { grid-template-columns: 1fr; } .studio-main { padding: 10px 12px 30px; } .brand-tabs { padding: 10px 12px 0; } }

@@ -10,5 +10,11 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "satori": "^0.12.2",
+    "zod": "^4.6.7"
   }
 }
