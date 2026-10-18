@@ -44,8 +44,12 @@ export const SPORTS = {
 // Sports we only have headlines for (no global live-score source).
 export const NEWS_ONLY = new Set(['kabaddi', 'fieldhockey', 'athletics', 'cycling', 'chess', 'shooting', 'archery', 'squash', 'wrestling', 'weightlifting', 'swimming', 'other']);
 
+import { posterPrompt } from './prompts.js';
+
 export const FORMATS = [
   { id: 'poster', label: 'AI Poster / Video' },
+  { id: 'prompt-tsb', label: 'AI prompt · Sports Binge' },
+  { id: 'prompt-musc', label: 'AI prompt · MUSC' },
   { id: 'text', label: 'Text' },
   { id: 'markdown', label: 'Markdown' },
   { id: 'json', label: 'JSON' },
@@ -267,23 +271,8 @@ export function toPoster(m, opts = {}) {
   if (logos.length) L.push(`LOGOS: ${logos.join(' | ')}`);
   if (m.link) L.push(`SOURCE: ${m.link}`);
 
-  // Ready-made prompt for an image / video AI.
-  const kind = s.state === 'post' ? 'full-time result poster' : s.state === 'in' ? 'live score update graphic' : 'match-day preview poster';
-  const headline = m.kind === 'field' ? `${m.name}: ${resultLine(m)}` : s.state === 'pre' ? `${m.home?.name} vs ${m.away?.name}` : scoreline(m);
-  const moments = ev.filter((e) => /goal|try|touchdown|wicket|ko|knockout|red/i.test(e.type)).slice(0, 4).map((e) => `${e.minute ? e.minute + ' ' : ''}${e.player || e.type}`);
-  const colourHint = colours.length ? `Use the team colours (${colours.join('; ')})` : 'Use bold colours that suit both sides';
-  const when = s.state === 'pre' ? ` Show the kick-off time (${formatDate(m.date, opts.timeZone || 'UTC')})${v ? ` and venue (${v})` : ''}.` : v ? ` Show the venue (${v}) and date in small type.` : '';
-  L.push(
-    '',
-    '━━━━━━━━━━━━━━━━━━━━━━━━',
-    '🎨 PROMPT FOR AI (poster / video):',
-    `Create a bold, high-energy ${sp.label.toLowerCase()} ${kind} for "${headline}" in the ${m.league?.name || sp.label}. ` +
-      `${s.state === 'pre' ? 'Put both team names and crests face to face with a big "VS".' : 'Put the score in huge type at the centre with both team names and crests on either side.'} ` +
-      `Add the competition name${m.note ? ` (${m.note})` : ''} at the top.${when} ` +
-      `${moments.length ? `Highlight: ${moments.join(', ')}. ` : ''}` +
-      `${colourHint}, dramatic stadium lighting and motion streaks. Add a small "NXT Sports" badge in a corner (black, chrome silver and red). ` +
-      'Poster: 1080×1350 (Instagram portrait). Video: 15-second vertical reel (1080×1920): score reveal, key moments as quick cuts, end card "NXT Sports".',
-  );
+  // Art-direction prompt for an image AI, in the page's style (attach a real photo).
+  L.push('', '━━━━━━━━━━━━━━━━━━━━━━━━', `🎨 PROMPT FOR AI — paste it with a real photo attached:`, '', posterPrompt(m, { brand: opts.brand || 'tsb', when: formatDate(m.date, opts.timeZone || 'UTC') }));
   if (opts.siteUrl) L.push('', `via NXT Sports · ${opts.siteUrl}`);
   return L.join('\n');
 }
@@ -301,8 +290,11 @@ export function newsPoster(n, opts = {}) {
     n.image ? `IMAGE: ${n.image}` : '',
     `LINK: ${n.link}`,
     '',
-    '🎨 PROMPT FOR AI (poster / video):',
-    `Create a striking "BREAKING ${sp.label.toUpperCase()} NEWS" social poster for the headline "${n.title}". Large headline text, a dramatic ${sp.label.toLowerCase()} action background, a red "BREAKING" tag and a small "NXT Sports" badge (black, chrome silver and red). Poster 1080×1350; video version: 10-second vertical reel (1080×1920) with the headline animating in.`,
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━',
+    '🎨 PROMPT FOR AI — paste it with a real photo attached:',
+    '',
+    posterPrompt({ ...n, kind: 'news' }, { brand: opts.brand || 'tsb' }),
   ]
     .filter((x) => x !== '')
     .join('\n');
@@ -311,6 +303,8 @@ export function newsPoster(n, opts = {}) {
 export function formatMatch(m, fmt, opts = {}) {
   switch (fmt) {
     case 'poster': return toPoster(m, opts);
+    case 'prompt-tsb': return posterPrompt(m, { brand: 'tsb', when: formatDate(m.date, opts.timeZone || 'UTC') });
+    case 'prompt-musc': return posterPrompt(m, { brand: 'musc', when: formatDate(m.date, opts.timeZone || 'UTC') });
     case 'markdown': return toMarkdown(m, opts);
     case 'json': return toJSON(m);
     case 'embed': return toEmbed(m, opts);

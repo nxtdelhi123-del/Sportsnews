@@ -1,4 +1,5 @@
 import { findSubject, findText, cropHero, cutoutOf, cleanBand, withoutText } from '/studio/cutout.js';
+import { posterPrompt } from '/js/prompts.js';
 
 const ASPECT = { tall: 1080 / 1440, post: 1080 / 1350, story: 1080 / 1920, square: 1 };
 
@@ -382,6 +383,20 @@ $('#cutoutOn').addEventListener('change', (e) => {
   if (state.src) {
     buildPhoto();
     updatePreview();
+  }
+});
+// A prompt for an image AI, with this post's words and layout.
+const SIZE_NAME = { tall: '3:4', post: '4:5', story: '9:16', square: '1:1' };
+$('#copyPrompt').addEventListener('click', async () => {
+  const p = state.current;
+  if (!p) return;
+  const words = { ...p.words, ...(edits() || {}) };
+  const text = posterPrompt(p.story, { brand: state.brand, words, template: state.template || p.template, size: SIZE_NAME[state.size], when: [p.when?.day, p.when?.time].filter(Boolean).join(', '), photo: true });
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Prompt copied. Paste it in your image AI and attach the real photo.');
+  } catch {
+    toast('Copy failed on this browser');
   }
 });
 $('#copyCaption').addEventListener('click', async () => {
