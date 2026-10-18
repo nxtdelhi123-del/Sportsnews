@@ -877,3 +877,17 @@ test('news feeds cover the world', () => {
   assert.ok(NEWS_FEEDS.some((f) => /Olympic/.test(f.url)));
   assert.equal(new Set(NEWS_FEEDS.map((f) => f.url)).size, NEWS_FEEDS.length, 'no duplicate feed URLs');
 });
+
+test('studio: the headline moves to the top when the desk says the athlete is low', async () => {
+  mockFetchGlobal();
+  const { default: render } = await import('../api/studio/render.js?layout');
+  const px = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR4nGP4z8DwHwyBNAMDAC+YA/0h2fHCAAAAAElFTkSuQmCC';
+  for (const layout of ['top', 'bottom', 'sideways']) {
+    const res = mockRes();
+    await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', hero: px, template: 'tsb-dark', layout, w: 300 }, query: {}, headers: { host: 'x' } }, res);
+    assert.equal(res.statusCode, 200, layout);
+  }
+  const res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', layout: 'top', json: 1 }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(JSON.parse(res.body).layout, 'top');
+});
