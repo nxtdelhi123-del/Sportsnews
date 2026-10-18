@@ -6,6 +6,8 @@ const TEMPLATES = { tsb: ['tsb-dark', 'tsb-cream'], musc: ['musc-result', 'musc-
 const state = { brand: localStorage.getItem('studio:brand') || 'tsb', packs: [], current: null, size: 'post', template: null, photo: null, rejected: new Set(JSON.parse(localStorage.getItem('studio:rejected') || '[]')), cutout: localStorage.getItem('studio:cutout') !== 'off' };
 
 const renderUrl = (p, size = 'post', template = null, w = 0) => `/api/studio/render?brand=${state.brand}&key=${encodeURIComponent(p.key)}&size=${size}${template ? '&template=' + template : ''}${w ? '&w=' + w : ''}`;
+// Stories pasted by the owner are not in the newsroom: every render carries the story itself.
+const custom = (p) => (p?.story?.source === 'pasted' ? { story: p.story } : {});
 
 async function load(bust = false) {
   $('#packs').innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
@@ -87,7 +89,9 @@ function edits() {
 }
 
 async function open(i) {
-  const p = state.packs[i];
+  openPack(state.packs[i]);
+}
+async function openPack(p) {
   state.current = p;
   state.template = null;
   state.photo = null;
@@ -101,6 +105,7 @@ async function open(i) {
   $('#cutoutOn').checked = state.cutout;
   updatePreview();
   $('#packDialog').showModal();
+  if (p.story?.source === 'pasted') return;
   // Words written by Claude arrive with the full pack.
   try {
     const full = await (await fetch(renderUrl(p) + '&json=1')).json();
@@ -118,10 +123,10 @@ function updatePreview() {
   const url = renderUrl(state.current, state.size, state.template);
   $('#download').download = `${state.brand}-${state.size}.png`;
   const words = edits();
-  if (state.photo || words) {
-    // Own photo or own words: render through POST, show and share the returned file.
+  if (state.photo || words || state.current.story?.source === 'pasted') {
+    // Own photo, own words or a pasted story: render through POST, show and share the returned file.
     $('#packImg').style.opacity = 0.4;
-    const body = { brand: state.brand, key: state.current.key, size: state.size, template: state.template || undefined, ...(state.photo || {}), words: words || undefined };
+    const body = { brand: state.brand, key: state.current.key, size: state.size, template: state.template || undefined, ...(state.photo || {}), words: words || undefined, ...custom(state.current) };
     state.file = fetch('/api/studio/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error || r.status);
@@ -282,5 +287,47 @@ $('#reject').addEventListener('click', async () => {
   toast('Noted. It learns from this.');
 });
 $('#refreshBtn').addEventListener('click', () => load(true));
+
+// ---- a pasted story: text → story → pack → the same dialog ----
+async function makeFromPaste() {
+  const text = $('#pasteText').value.trim();
+  if (!text) return toast('Paste something first');
+  $('#pasteStatus').textContent = 'Reading…';
+  try {
+    const r = await fetch('/api/studio/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand: state.brand, paste: text, json: 1 }) });
+    const pack = await r.json();
+    if (!r.ok) throw new Error(pack.error || r.status);
+    $('#pasteStatus').textContent = '';
+    openPack(pack);
+    // A picture link in the text becomes the photo, cut out like any other.
+    if (pack.story?.image) usePhotoLink(pack.story.image);
+  } catch (e) {
+    $('#pasteStatus').textContent = e.message;
+  }
+}
+$('#pasteGo').addEventListener('click', makeFromPaste);
+$('#pasteText').addEventListener('keydown', (e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && makeFromPaste());
+
+// ---- opened from the newsroom's Post button: /studio?brand=tsb&key=… ----
+async function openFromLink() {
+  const q = new URLSearchParams(location.search);
+  const key = q.get('key');
+  if (!key) return;
+  if (q.get('brand') && TEMPLATES[q.get('brand')]) {
+    state.brand = q.get('brand');
+    localStorage.setItem('studio:brand', state.brand);
+    document.querySelectorAll('#brandTabs button').forEach((x) => x.classList.toggle('active', x.dataset.brand === state.brand));
+  }
+  try {
+    const r = await fetch(`/api/studio/render?brand=${state.brand}&key=${encodeURIComponent(key)}&json=1`);
+    const pack = await r.json();
+    if (!r.ok) throw new Error(pack.error || r.status);
+    openPack(pack);
+  } catch (e) {
+    toast(`Couldn't open that story: ${e.message}`);
+  }
+  history.replaceState(null, '', location.pathname);
+}
 document.querySelectorAll('#brandTabs button').forEach((x) => x.classList.toggle('active', x.dataset.brand === state.brand));
 load();
+openFromLink();

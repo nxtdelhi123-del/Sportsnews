@@ -28,6 +28,12 @@
 
   <main class="studio-main">
     <p id="studioHint" class="hint">Today's stories ranked the way this page posts: India first, medals and records, then the biggest finals and verdicts. Share what you'd post; Not this on what you wouldn't.</p>
+    <details class="paste-box" id="pasteBox">
+      <summary>📋 Paste a story</summary>
+      <p class="muted small">Paste the newsroom's Copy details text, or any headline with a line or two under it. A picture link in the text becomes the photo.</p>
+      <textarea id="pasteText" rows="5" placeholder="Parul Chaudhary wins bronze in women's 5000m at Asian Games&#10;She clocked 15:14.61, a national record."></textarea>
+      <div class="row-actions"><button id="pasteGo" class="btn" type="button">Make the post</button><span id="pasteStatus" class="muted small"></span></div>
+    </details>
     <div id="packs" class="packs"><div class="skeleton"></div><div class="skeleton"></div></div>
   </main>
 

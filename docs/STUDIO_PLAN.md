@@ -201,6 +201,29 @@ Tested end to end in headless Chromium against the mock server: paste link → f
 cut out (silueta) → redraw → edit words → redraw. ~14 s for the first cut-out on a
 laptop including the model load; later ones take a few seconds.
 
+## 2.7 Paste a story, Post from the newsroom, the world's feeds — 18 Oct 2026
+
+- **Paste a story** (`lib/studio/paste.js`, the box at the top of `/studio`): the
+  newsroom's own Copy details text (match or headline, either format) or any headline
+  with a line or two under it becomes a story. Scorelines, HOME/AWAY lines, key
+  moments with minutes, venue, date and a picture link are read out of the text; a
+  picture link is fetched and cut out like any other photo. `POST /api/studio/render`
+  takes `paste` (text) or `story` (the parsed story the desk sends back, checked field
+  by field by `cleanStory`). Pasted packs are memoized on the story's content.
+- **🎨 Post** on every newsroom card and headline opens `/studio?brand=tsb&key=…`
+  straight on that story.
+- **Feeds** (`lib/sources.js`): 124 feeds. Google News sports editions for 29
+  countries (India, UK, US, Australia, Canada, South Africa, Nigeria, Singapore,
+  Pakistan, Ireland, New Zealand, Malaysia, Philippines, Kenya, Ghana, UAE,
+  Bangladesh, Sri Lanka, Hong Kong, Japan, Germany, Spain, Italy, France, Brazil,
+  Argentina, Mexico, Saudi Arabia, South Korea), 45 Google News searches by sport and
+  competition (Olympics, world championships, Europe's leagues, Asian, African and
+  South American football, cricket leagues, women's cricket and football, Olympic
+  sports, motorsport, rugby, cycling, tennis, multi-sport Games), and outlet feeds
+  from the UK, US, Canada, France, Germany, New Zealand, Pakistan, Japan, India and
+  Olympics.com. Fetched 28 at a time inside the 9 s budget; slow ones finish on the
+  next pass.
+
 ## 3. Phases
 
 ### Phase 1 — Posters from live data (1 session) — DONE 2026-10-18 (PR #12)

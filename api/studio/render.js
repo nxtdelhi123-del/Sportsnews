@@ -1,4 +1,5 @@
-import { buildPack } from '../../lib/studio/packs.js';
+import { buildPack, pastedPack } from '../../lib/studio/packs.js';
+import { parsePasted, cleanStory } from '../../lib/studio/paste.js';
 import { BRANDS } from '../../lib/studio/score.js';
 import { renderPack, loadAssets, dataUri } from '../../lib/studio/render.js';
 import { TEMPLATES, SIZES } from '../../lib/studio/templates.js';
@@ -22,7 +23,9 @@ export function cleanWords(w) {
 }
 
 // GET /api/studio/render?brand=tsb&key=match:soccer/eng.1:740001&size=post|story&template=tsb-dark&json=1
-// POST the same fields as JSON, plus hero / cutout (data URIs), heroUrl, words (edits).
+// POST the same fields as JSON, plus hero / cutout (data URIs), heroUrl, words (edits),
+// and for stories that are not in the newsroom: paste (text the owner copied) or story
+// (the parsed story sent back by the desk).
 export default async function handler(req, res) {
   let body = {};
   if (req.method === 'POST') {
@@ -37,7 +40,16 @@ export default async function handler(req, res) {
     }
     if (body.heroUrl && !/^https?:\/\/\S{4,500}$/.test(body.heroUrl)) return sendJSON(res, 400, { error: 'heroUrl must be an http(s) link' });
   }
-  const { brand = 'tsb', key = '', size = 'post', template, json, w } = { ...(req.query || {}), ...body };
+  let pasted = null;
+  if (typeof body.paste === 'string') {
+    pasted = parsePasted(body.paste.slice(0, 6000));
+    if (!pasted) return sendJSON(res, 400, { error: 'Could not read a story in that text. Paste a headline, or the newsroom’s Copy details text.' });
+  } else if (body.story) {
+    pasted = cleanStory(body.story);
+    if (!pasted) return sendJSON(res, 400, { error: 'That story is missing a headline or the two teams' });
+  }
+  const { brand = 'tsb', size = 'post', template, json, w } = { ...(req.query || {}), ...body };
+  const key = pasted ? (pasted.kind === 'news' ? 'news:pasted' : 'match:pasted:pasted') : String(body.key ?? req.query?.key ?? '');
   const width = Math.min(1080, Math.max(270, Number(w) || 1080));
   if (!BRANDS[brand]) return sendJSON(res, 400, { error: 'Unknown brand' });
   if (!/^(match|news):[\w.:/-]{1,140}$/.test(key)) return sendJSON(res, 400, { error: 'Invalid key' });
@@ -45,11 +57,11 @@ export default async function handler(req, res) {
   if (template && !TEMPLATES[template]) return sendJSON(res, 400, { error: 'Unknown template', templates: Object.keys(TEMPLATES) });
   const edits = cleanWords(body.words);
   try {
-    const base = await buildPack(brand, key);
+    const base = pasted ? await pastedPack(brand, pasted) : await buildPack(brand, key);
     if (!base) return sendJSON(res, 404, { error: 'Story not found (it may have left the window)' });
     const pack = edits ? { ...base, words: { ...base.words, ...edits } } : base;
     if (json) return sendJSON(res, 200, pack);
-    const own = !!(body.hero || body.cutout || body.heroUrl);
+    const own = !!(body.hero || body.cutout || body.heroUrl || pasted);
     const render = async () => {
       const hero = body.hero || (body.heroUrl ? await dataUri(body.heroUrl, { max: 8_000_000 }) : null);
       if (body.heroUrl && !hero) throw Object.assign(new Error('Could not fetch that picture'), { status: 502 });

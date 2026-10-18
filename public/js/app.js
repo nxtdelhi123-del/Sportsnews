@@ -207,6 +207,7 @@ function matchCard(m) {
     </div>
     <footer class="card-actions">
       <button class="btn small copy-btn" data-act="copy" title="Copy all match details">⧉ Copy details</button>
+      <a class="btn small ghost" href="/studio?brand=tsb&key=${esc(encodeURIComponent(`match:${m.league?.path || 'x'}:${m.id}`))}" title="Make the Instagram post in the Studio">🎨 Post</a>
       <button class="btn small ghost" data-act="code" title="Preview and pick a format">&lt;/&gt; Formats</button>
       ${safeUrl(m.link) ? `<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener" title="Match centre">↗</a>` : ''}
     </footer>
@@ -305,7 +306,8 @@ function renderNews() {
       <div>
         <a href="${esc(safeUrl(n.link))}" target="_blank" rel="noopener" class="news-title">${esc(n.title)}</a>
         <div class="news-meta">${tierBadge(n.tier)}${sportOf(n.sport).emoji} ${esc(n.source)} · ${esc(timeAgo(n.published))}
-          <button class="link-btn" data-copy-news="${i}" title="Copy headline details for an AI poster">⧉ Copy</button></div>
+          <button class="link-btn" data-copy-news="${i}" title="Copy headline details for an AI poster">⧉ Copy</button>
+          <a class="link-btn" href="/studio?brand=tsb&key=${esc(encodeURIComponent(`news:${n.id}`))}" title="Make the Instagram post in the Studio">🎨 Post</a></div>
       </div>
     </article>`,
     )

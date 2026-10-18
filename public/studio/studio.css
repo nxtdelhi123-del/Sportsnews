@@ -33,3 +33,9 @@ body.studio::before { opacity: 0.05; }
 .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .check input { accent-color: var(--red, #d7191c); }
 @media (max-width: 560px) { .fields-grid { grid-template-columns: 1fr; } }
+
+/* ---- paste a story ---- */
+.paste-box { margin: 0 0 14px; border: 1px dashed var(--line-strong); border-radius: 14px; padding: 10px 14px; background: var(--card); }
+.paste-box summary { cursor: pointer; font-weight: 600; }
+.paste-box textarea { width: 100%; box-sizing: border-box; margin: 8px 0; background: var(--card-2); border: 1px solid var(--line-strong); color: var(--text); border-radius: 10px; padding: 8px 10px; font: 14px/1.4 inherit; font-family: inherit; }
+.paste-box .small { font-size: 12px; margin: 6px 0 0; }
