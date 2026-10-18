@@ -53,7 +53,7 @@ async function open(i) {
   $('#fHeadline').value = p.words.headline;
   $('#fCaption').value = p.words.caption;
   $('#packMeta').textContent = `${p.type} · score ${p.score} · ${p.reason || ''} · words by ${p.words.by || 'formula'}`;
-  $('#tplSeg').innerHTML = TEMPLATES[state.brand].map((t) => `<button data-tpl="${t}" class="${t === p.template ? 'active' : ''}">${t.replace(/^\w+-/, '')}</button>`).join('');
+  $('#tplSeg').innerHTML = [...TEMPLATES[state.brand], ...(p.type === 'tally' && state.brand === 'tsb' ? ['tsb-tally'] : [])].map((t) => `<button data-tpl="${t}" class="${t === p.template ? 'active' : ''}">${t.replace(/^\w+-/, '')}</button>`).join('');
   document.querySelectorAll('#sizeSeg button').forEach((b) => b.classList.toggle('active', b.dataset.size === state.size));
   updatePreview();
   $('#packDialog').showModal();

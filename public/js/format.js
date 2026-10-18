@@ -32,11 +32,17 @@ export const SPORTS = {
   athletics: { label: 'Athletics', emoji: '🏃' },
   cycling: { label: 'Cycling', emoji: '🚴' },
   chess: { label: 'Chess', emoji: '♟️' },
+  shooting: { label: 'Shooting', emoji: '🎯' },
+  archery: { label: 'Archery', emoji: '🏹' },
+  squash: { label: 'Squash', emoji: '🎾' },
+  wrestling: { label: 'Wrestling', emoji: '🤼' },
+  weightlifting: { label: 'Weightlifting', emoji: '🏋️' },
+  swimming: { label: 'Swimming', emoji: '🏊' },
   other: { label: 'Other', emoji: '🏅' },
 };
 
 // Sports we only have headlines for (no global live-score source).
-export const NEWS_ONLY = new Set(['kabaddi', 'fieldhockey', 'athletics', 'cycling', 'chess', 'other']);
+export const NEWS_ONLY = new Set(['kabaddi', 'fieldhockey', 'athletics', 'cycling', 'chess', 'shooting', 'archery', 'squash', 'wrestling', 'weightlifting', 'swimming', 'other']);
 
 export const FORMATS = [
   { id: 'poster', label: 'AI Poster / Video' },

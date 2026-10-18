@@ -148,7 +148,7 @@ function renderChips() {
   $('#sportChips').innerHTML =
     chip('all', '🌍', 'All sports', totalLive) +
     Object.entries(SPORTS)
-      .filter(([k]) => k !== 'other' || newsCount.other)
+      .filter(([k]) => !NEWS_ONLY.has(k) || newsCount[k] || live[k])
       .map(([k, v]) => chip(k, v.emoji, v.label, live[k]))
       .join('') +
     (totalLive ? `<span class="live-pill"><i></i>${totalLive} live now</span>` : '');
