@@ -84,8 +84,33 @@ fonts are identified by shape and matched with free Google Fonts.
     top, lines mixing ink and bronze-gradient words, a tricolour dash between the two
     halves, a small footer with an arrow.
 
+11. **Side panel** (SAWAN BARWAL SILVER, INTO THE FINAL): name and metal stacked top-left
+    over a third of the width, a vertical rule with stat blocks under it (2:11:37 / NEW
+    INDIAN NATIONAL RECORD, 44 YEARS), the athlete on the right with a faded
+    black-and-white close-up of the same athlete behind.
+12. **Team medal** (SILVER — men's 50m rifle 3P team, INDIA BRONZE 4×400): the squad
+    standing with their medals, the metal huge across their waists, one spaced line, the
+    names in columns split by rules, a tricolour sweep at the foot.
+13. **Two medals** (DOUBLE PODIUM): two athletes, a gold two-line headline, then two
+    columns — name, metal word in its own metal, result.
+14. **Two results** (TWO GOLDS?): corner brackets, the team photo, a white/gold headline,
+    two score panels (WOMEN · INDIA 48–24 NEPAL | MEN · INDIA 66–28 THAILAND), a
+    gold-outlined date pill.
+15. **Grid / standings** (RUSSELL ON POLE): the driver smiling top-left, venue top-right,
+    white/team-colour headline, a four-row results table with position chips, the car
+    bottom-left and a second driver with a big "P16" bottom-right.
+
 ### Headlines
 2–6 words, a full stop, capitals except editorial results/previews (sentence case).
+
+### Style references for image AIs
+One real post per layout lives in `public/studio/refs/<brand>-<layout>.jpg` (contact sheet:
+`docs/style-refs.jpg`), cut from the owner's grid screenshots of 18 Oct 2026 with
+Instagram's overlay icons painted out. Every AI prompt names the one for its layout and
+tells the AI to match it exactly but copy none of its words, people or logos; the Studio's
+⤓ Style reference button downloads it. MUSC has references for head, slanted head,
+matchday and signing; its other layouts point at the closest one for type and grade only
+(the other MUSC tiles were video frames or too small).
 
 ## @musc_reddevils
 

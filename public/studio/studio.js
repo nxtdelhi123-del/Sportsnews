@@ -1,5 +1,5 @@
 import { findSubject, findText, cropHero, cutoutOf, cleanBand, withoutText } from '/studio/cutout.js';
-import { posterPrompt } from '/js/prompts.js';
+import { posterPrompt, styleRef } from '/js/prompts.js';
 
 const ASPECT = { tall: 1080 / 1440, post: 1080 / 1350, story: 1080 / 1920, square: 1 };
 
@@ -129,6 +129,7 @@ async function openPack(p) {
 function updatePreview() {
   const url = renderUrl(state.current, state.size, state.template);
   $('#download').download = `${state.brand}-${state.size}.png`;
+  setStyleRef();
   const words = edits();
   if (state.photo || words || state.current.story?.source === 'pasted') {
     // Own photo, own words or a pasted story: render through POST, show and share the returned file.
@@ -385,16 +386,25 @@ $('#cutoutOn').addEventListener('change', (e) => {
     updatePreview();
   }
 });
-// A prompt for an image AI, with this post's words and layout.
+// A prompt for an image AI, with this post's words and layout, and the real post of the
+// same layout to attach as its style reference. A layout picked on the desk is kept.
 const SIZE_NAME = { tall: '3:4', post: '4:5', story: '9:16', square: '1:1' };
+const promptOpts = (p) => ({ brand: state.brand, words: { ...p.words, ...(edits() || {}) }, template: state.template || p.template, pinned: !!state.template, size: SIZE_NAME[state.size], when: [p.when?.day, p.when?.time].filter(Boolean).join(', '), photo: true });
+function setStyleRef() {
+  const p = state.current;
+  if (!p) return;
+  const ref = styleRef(p.story, promptOpts(p));
+  $('#styleRef').href = ref.url;
+  $('#styleRef').download = ref.url.split('/').pop();
+}
 $('#copyPrompt').addEventListener('click', async () => {
   const p = state.current;
   if (!p) return;
-  const words = { ...p.words, ...(edits() || {}) };
-  const text = posterPrompt(p.story, { brand: state.brand, words, template: state.template || p.template, size: SIZE_NAME[state.size], when: [p.when?.day, p.when?.time].filter(Boolean).join(', '), photo: true });
+  setStyleRef();
+  const text = posterPrompt(p.story, promptOpts(p));
   try {
     await navigator.clipboard.writeText(text);
-    toast('Prompt copied. Paste it in your image AI and attach the real photo.');
+    toast('Prompt copied. Paste it in your image AI and attach the real photo, the ⤓ Style reference and our badge.');
   } catch {
     toast('Copy failed on this browser');
   }
