@@ -18,7 +18,7 @@
       <picture><source srcset="/img/nxt-mark-dark.png" media="(prefers-color-scheme: dark)"><img class="brand-mark" src="/img/nxt-mark.png" alt="" width="95" height="56"></picture>
       <span class="brand-sub"><span class="sports-word">Studio</span><span class="tagline">Posts and reels from today's stories</span></span>
     </a>
-    <div class="refresh"><button id="refreshBtn" class="btn" type="button">↻ Refresh</button></div>
+    <div class="refresh"><a class="btn ghost" href="/" title="All matches and headlines">Newsroom</a><button id="refreshBtn" class="btn" type="button">↻ Refresh</button></div>
   </header>
 
   <nav class="brand-tabs" id="brandTabs">
@@ -44,6 +44,7 @@
           <button id="share" class="btn" type="button" title="Opens the share sheet with the poster; the caption is copied for you">📲 Share to Instagram</button>
           <button id="copyCaption" class="btn ghost" type="button">⧉ Copy caption</button>
           <a id="download" class="btn ghost" download>⬇ Download PNG</a>
+          <label class="btn ghost" for="photoIn" title="Use your own picture as the background">🖼 Add photo<input id="photoIn" type="file" accept="image/*" hidden></label>
           <button id="reject" class="btn ghost" type="button">✗ Not this</button>
         </div>
         <p id="packMeta" class="muted"></p>

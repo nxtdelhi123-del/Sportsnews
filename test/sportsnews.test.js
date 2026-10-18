@@ -611,3 +611,36 @@ test('studio: render endpoint accepts every story key shape', async () => {
   assert.equal(res.headers['content-type'], 'image/png');
   assert.equal(res.body.readUInt32BE(16), 540, 'thumbnail width honoured');
 });
+
+// ---- Studio photos ----
+import { namesIn } from '../lib/studio/photos.js';
+import { upsize } from '../lib/rss.js';
+
+test('studio: athlete names are picked out of headlines, nations and events are not', () => {
+  assert.deepEqual(namesIn('Parul Chaudhary wins bronze in women\'s 5000m at Asian Games'), ['Parul Chaudhary']);
+  assert.deepEqual(namesIn('India beat Australia to level the ODI series'), []);
+  assert.deepEqual(namesIn('Virat Kohli becomes fastest to 15,000 ODI runs as India win'), ['Virat Kohli']);
+  assert.deepEqual(namesIn('Lamine Yamal and Nico Williams sink England at Wembley'), ['Lamine Yamal', 'Nico Williams']);
+});
+
+test('feed images are asked for at poster size', () => {
+  assert.equal(upsize('https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/abcd/live/x.jpg'), 'https://ichef.bbci.co.uk/ace/standard/976/cpsprodpb/abcd/live/x.jpg');
+  assert.equal(upsize('https://a.espncdn.com/photo/2026/1016/r1_600x400_16-9.jpg'), 'https://a.espncdn.com/photo/2026/1016/r1_1296x729_16-9.jpg');
+  assert.equal(upsize('https://example.com/pic.jpg'), 'https://example.com/pic.jpg');
+  const [item] = parseFeed('<rss><channel><item><title>T</title><link>https://x/1</link><media:content url="https://i.guim.co.uk/a/140.jpg" width="140"/><media:content url="https://i.guim.co.uk/a/460.jpg" width="460"/></item></channel></rss>');
+  assert.equal(item.image, 'https://i.guim.co.uk/a/460.jpg');
+});
+
+test('studio: a photo sent with the request becomes the poster background', async () => {
+  mockFetchGlobal();
+  const { default: render } = await import('../api/studio/render.js?hero');
+  // 2×2 red PNG
+  const hero = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR4nGP4z8DwHwyBNAMDAC+YA/0h2fHCAAAAAElFTkSuQmCC';
+  let res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', key: 'news:nope', hero: 'data:text/plain;base64,QUJD' }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 400);
+  res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', hero, template: 'tsb-dark', w: 360 }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.headers['content-type'], 'image/png');
+});

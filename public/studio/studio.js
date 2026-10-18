@@ -47,6 +47,8 @@ async function open(i) {
   const p = state.packs[i];
   state.current = p;
   state.template = null;
+  state.hero = null;
+  $('#photoIn').value = '';
   $('#packTitle').textContent = p.story.name || p.story.title || 'Post';
   $('#fHeadline').value = p.words.headline;
   $('#fCaption').value = p.words.caption;
@@ -71,14 +73,59 @@ async function open(i) {
 
 function updatePreview() {
   const url = renderUrl(state.current, state.size, state.template);
+  $('#download').download = `${state.brand}-${state.size}.png`;
+  if (state.hero) {
+    // Own photo: render through POST, show and share the returned file.
+    $('#packImg').style.opacity = 0.4;
+    state.file = fetch('/api/studio/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand: state.brand, key: state.current.key, size: state.size, template: state.template || undefined, hero: state.hero }) })
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).error || r.status);
+        return r.blob();
+      })
+      .then((b) => {
+        const objUrl = URL.createObjectURL(b);
+        $('#packImg').src = objUrl;
+        $('#packImg').style.opacity = 1;
+        $('#download').href = objUrl;
+        return new File([b], `${state.brand}-${state.size}.png`, { type: 'image/png' });
+      })
+      .catch((e) => {
+        $('#packImg').style.opacity = 1;
+        toast(`Photo failed: ${e.message}`);
+        return null;
+      });
+    return;
+  }
   $('#packImg').src = url;
   $('#download').href = url;
-  $('#download').download = `${state.brand}-${state.size}.png`;
   // Fetch the file now so the Share tap can hand it over immediately (share sheets need a fresh tap).
   state.file = fetch(url)
     .then((r) => r.blob())
     .then((b) => new File([b], `${state.brand}-${state.size}.png`, { type: 'image/png' }))
     .catch(() => null);
+}
+
+// Shrink the chosen photo on the phone so the request stays small, then re-draw.
+function usePhoto(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const max = 1600;
+      const k = Math.min(1, max / Math.max(im.width, im.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(im.width * k);
+      c.height = Math.round(im.height * k);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      state.hero = c.toDataURL('image/jpeg', 0.86);
+      if (!state.template || !/dark|result/.test(state.template)) state.template = state.brand === 'tsb' ? 'tsb-dark' : 'musc-result';
+      document.querySelectorAll('#tplSeg button').forEach((x) => x.classList.toggle('active', x.dataset.tpl === state.template));
+      updatePreview();
+      toast('Photo added. Re-drawing…');
+    };
+    im.src = reader.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 async function share() {
@@ -129,6 +176,7 @@ $('#tplSeg').addEventListener('click', (e) => {
   updatePreview();
 });
 $('#share').addEventListener('click', share);
+$('#photoIn').addEventListener('change', (e) => e.target.files[0] && usePhoto(e.target.files[0]));
 $('#copyCaption').addEventListener('click', async () => {
   await navigator.clipboard.writeText($('#fCaption').value);
   toast('Caption copied');

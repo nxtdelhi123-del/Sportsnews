@@ -2,11 +2,21 @@ import { buildPack } from '../../lib/studio/packs.js';
 import { BRANDS } from '../../lib/studio/score.js';
 import { renderPack, loadAssets } from '../../lib/studio/render.js';
 import { TEMPLATES, SIZES } from '../../lib/studio/templates.js';
-import { memoize, sendJSON } from '../../lib/http.js';
+import { memoize, readJSON, sendJSON } from '../../lib/http.js';
 
 // GET /api/studio/render?brand=tsb&key=match:soccer/eng.1:740001&size=post|story&template=tsb-dark&json=1
 export default async function handler(req, res) {
-  const { brand = 'tsb', key = '', size = 'post', template, json, w } = req.query || {};
+  let body = {};
+  if (req.method === 'POST') {
+    try {
+      body = await readJSON(req);
+    } catch {
+      return sendJSON(res, 400, { error: 'Body must be JSON' });
+    }
+    if (body.hero && !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(body.hero)) return sendJSON(res, 400, { error: 'hero must be a PNG/JPEG/WebP data URI' });
+    if (body.hero && body.hero.length > 4_200_000) return sendJSON(res, 413, { error: 'Photo too large; keep it under 3 MB' });
+  }
+  const { brand = 'tsb', key = '', size = 'post', template, json, w } = { ...(req.query || {}), ...body };
   const width = Math.min(1080, Math.max(270, Number(w) || 1080));
   if (!BRANDS[brand]) return sendJSON(res, 400, { error: 'Unknown brand' });
   if (!/^(match|news):[\w.:/-]{1,140}$/.test(key)) return sendJSON(res, 400, { error: 'Invalid key' });
@@ -16,10 +26,11 @@ export default async function handler(req, res) {
     const pack = await buildPack(brand, key);
     if (!pack) return sendJSON(res, 404, { error: 'Story not found (it may have left the window)' });
     if (json) return sendJSON(res, 200, pack);
-    const { png, template: used } = await memoize(`studio:png:${brand}:${key}:${size}:${template || ''}:${width}`, 3 * 60_000, async () => {
-      const assets = await loadAssets(pack, BRANDS[brand]);
+    const render = async () => {
+      const assets = await loadAssets(pack, BRANDS[brand], { hero: body.hero });
       return renderPack({ ...pack, brand: BRANDS[brand], assets }, { size, template, width });
-    });
+    };
+    const { png, template: used } = body.hero ? await render() : await memoize(`studio:png:${brand}:${key}:${size}:${template || ''}:${width}`, 3 * 60_000, render);
     res.statusCode = 200;
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=180, stale-while-revalidate=120');
