@@ -8,6 +8,13 @@ const METAL = /\b(gold|silver|bronze)\b/i;
 const NAME = /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,2})\b/;
 const NOT_NAMES = /^(Asian Games|Premier League|World Cup|Nations League|Champions League|Manchester United|Manchester City|Real Madrid|Team India|New Zealand|South Africa|Sri Lanka)$/;
 
+// Nations play under flags; clubs under crests (which the AI must not draw).
+const NATIONS = /^(india|pakistan|england|spain|france|germany|italy|portugal|netherlands|belgium|brazil|argentina|uruguay|mexico|usa|united states|japan|south korea|korea|australia|new zealand|south africa|sri lanka|bangladesh|afghanistan|west indies|ireland|scotland|wales|norway|sweden|denmark|croatia|serbia|switzerland|poland|morocco|senegal|nigeria|ghana|egypt|iran|china|qatar|saudi arabia|turkey|türkiye|colombia|chile|canada|nepal|zimbabwe)( men| women)?$/i;
+export const isNationTeam = (t) => NATIONS.test(String(t?.name || '').trim());
+const scorer = (p = '') => String(p).split(' / ')[0].replace(/\s*\(.*\)/, '').trim();
+const PHOTO_LAYOUTS = new Set(['medal-top', 'medal-bottom', 'phrase', 'number', 'quote', 'result-photo', 'preview', 'vs', 'verdict', 'head', 'head-left', 'head-slant', 'matchday', 'result', 'signing']);
+const METAL_LAYOUTS = new Set(['medal-top', 'medal-bottom', 'phrase', 'number', 'tally', 'cover']);
+
 export const BRAND_INFO = {
   tsb: { name: 'The Sports Binge', handle: '@thesportsbinge' },
   musc: { name: 'MUSC Red Devils', handle: '@musc_reddevils' },
@@ -47,9 +54,9 @@ export function headlineFor(item, kind, brand = 'tsb') {
       const won = (us === h && hs > as) || (us === a && as > hs);
       return hs === as ? 'ONE POINT. MORE QUESTIONS.' : won ? (Math.abs(hs - as) >= 3 ? 'STATEMENT MADE.' : 'THREE POINTS. NO DRAMA.') : 'A NIGHT TO FORGET.';
     }
-    if (hs === as) return 'Honours even.';
+    const place = (item.venue?.name || '').split(',')[0].replace(/\b(stadium|arena|ground|park)\b/gi, '').replace(/\s+/g, ' ').trim();
+    if (hs === as) return place && place.split(' ').length <= 2 ? `Honours even at ${place}.` : 'Honours even.';
     const [w, l] = hs > as ? [h, a] : [a, h];
-    const place = (item.venue?.name || '').replace(/\b(stadium|arena|ground|park)\b/gi, '').trim();
     return w === a && place && place.split(' ').length <= 2 ? `${w.name} take ${place}.` : `${w.name} beat ${l.name}.`;
   }
   const metal = (t.match(METAL) || [])[1];
@@ -129,7 +136,7 @@ const TSB_LAYOUTS = {
       'Top: the competition and season in tiny spaced caps between two hairlines.',
       'Then the masthead "THE SPORTS BINGE" in a tall condensed newspaper serif, navy (#0F1B33), filling the full width, with a rule under it.',
       'Centre: the HEADLINE in 2 lines, heavy semi-condensed serif, sentence case, centred, navy.',
-      '"FULL TIME" in spaced caps between hairlines, then a row: real flag of team 1 (rectangle) · the score "X–Y" huge in navy serif · real flag of team 2, separated by thin vertical rules; team names in spaced caps under the flags; scorers with minutes in small serif under each team.',
+      'The STATUS LABEL in spaced caps between hairlines, then a row: team 1 mark · the score "X–Y" huge in navy serif · team 2 mark, separated by thin vertical rules (team marks: the real rectangular flag for a national team; for a club, an EMPTY square outline the size of a flag where I place the crest). Team names in spaced caps under the marks; each team’s scorers with minutes in small serif under that team.',
       'Bottom: the round/group in spaced caps between hairlines, then the handle.',
     ],
   },
@@ -296,7 +303,9 @@ function textLines(brand, key, words, item, when) {
       add('TEAM 2', item.away.name);
       if (item.status?.state !== 'pre' && item.home.score !== undefined && item.home.score !== '') add('SCORE', `${item.home.score}–${item.away.score}`);
       const goals = (item.events || []).filter((e) => /goal/i.test(e.type) && e.player).slice(0, 6);
-      if (goals.length) add('SCORERS', goals.map((g) => `${g.player.replace(/\s*\(.*\)/, '')} ${g.minute}${g.team ? ` (${g.team})` : ''}`).join(', '));
+      const side = (t) => goals.filter((g) => [t.name, t.abbr, t.short].filter(Boolean).some((n) => String(g.team || '').toUpperCase() === String(n).toUpperCase())).map((g) => `${scorer(g.player)} ${g.minute}`);
+      if (side(item.home).length) add(`SCORERS UNDER ${UP(item.home.name)}`, side(item.home).join(', '));
+      if (side(item.away).length) add(`SCORERS UNDER ${UP(item.away.name)}`, side(item.away).join(', '));
       if (item.status?.state === 'pre' && when) add('DATE & TIME', when);
       if (item.venue?.name) add('VENUE', [item.venue.name, item.venue.city].filter(Boolean).join(', '));
     }
@@ -304,7 +313,25 @@ function textLines(brand, key, words, item, when) {
   for (const st of (words.stats || []).slice(0, 3)) add('STAT', `${st.value} — ${st.label}`);
   for (const p of words.podium || []) add('PODIUM', `${p.name}: ${UP(p.metal)}${p.value ? ' ' + p.value : ''}`);
   if (words.big) add('TOTAL', words.big);
-  add('COMPETITION', words.eyebrow);
+  if (item.kind !== 'news' && !words.eyebrow) {
+    const d = item.date ? new Date(item.date) : null;
+    const season = d && /league|liga|serie|bundesliga|ligue|cup/i.test(item.league?.name || '') ? ` · ${d.getUTCMonth() >= 6 ? d.getUTCFullYear() : d.getUTCFullYear() - 1}/${String((d.getUTCMonth() >= 6 ? d.getUTCFullYear() : d.getUTCFullYear() - 1) + 1).slice(2)}` : '';
+    add('COMPETITION', `${UP(item.league?.name || '')}${season}`);
+  } else add('COMPETITION', words.eyebrow);
+  const status = item.status?.state === 'in' ? 'LIVE' : item.status?.state === 'pre' ? '' : 'FULL TIME';
+  const FIXED = {
+    cream: [['MASTHEAD', 'THE SPORTS BINGE'], ['STATUS LABEL', status || when]],
+    'medal-top': [['SMALL MASTHEAD', 'THE SPORTS BINGE']],
+    preview: [['TOP MARK', 'TSB'], ['BETWEEN THE FLAGS', 'VS']],
+    vs: [['SMALL WORD BETWEEN THE NAMES', 'vs']],
+    tally: [['UNDER THE TOTAL', 'TOTAL MEDALS']],
+    verdict: [['TAG', 'BREAKING REPORT']],
+    result: [['TAG', status]],
+    'result-photo': [],
+    statement: [['ABOVE THE PANEL', 'MATCHDAY']],
+    signing: [['TOP LINE', 'MUSC RED DEVILS']],
+  };
+  for (const [label, val] of FIXED[key] || []) add(label, val);
   if (brand === 'musc' && key === 'matchday') add('BROADCAST', 'WATCH LIVE ONLY ON FANCODE');
   add('HANDLE', BRAND_INFO[brand].handle);
   return W;
@@ -340,18 +367,23 @@ export function posterPrompt(item, { brand = 'tsb', words = {}, template = '', s
   const info = BRAND_INFO[brand];
   const dims = size === '9:16' ? '1080×1920 (9:16 story)' : size === '4:5' ? '1080×1350 (4:5)' : size === '1:1' ? '1080×1080 (1:1)' : '1080×1440 (3:4, Instagram grid shape)';
   const subject = item.kind === 'news' ? personIn(item.title) || 'the athlete or team in the story' : `${item.home?.name || ''} and ${item.away?.name || ''} players`;
-  const story = item.kind === 'news' ? `${clean(item.title)}${item.summary ? ' — ' + clean(item.summary).slice(0, 300) : ''}` : `${item.home?.name} ${item.home?.score ?? ''} – ${item.away?.score ?? ''} ${item.away?.name} · ${item.league?.name || ''}${item.note ? ' · ' + item.note : ''}`;
+  const recap = item.details?.recap || item.headline || '';
+  const story = item.kind === 'news' ? `${clean(item.title)}${item.summary ? ' — ' + clean(item.summary).slice(0, 300) : ''}` : `${item.home?.name} ${item.home?.score ?? ''} – ${item.away?.score ?? ''} ${item.away?.name} · ${item.league?.name || ''}${item.note ? ' · ' + item.note : ''}${item.venue?.name ? ' · ' + item.venue.name : ''}${recap ? ' — ' + clean(recap).slice(0, 260) : ''}`;
+  const utdGame = brand === 'tsb' && item.kind !== 'news' && /manchester united|man utd/i.test(`${item.home?.name} ${item.away?.name}`);
   const out = [
+    utdGame ? '(Man United game — for @musc_reddevils use Formats → “AI prompt · MUSC” instead.)\n' : null,
     `You are the senior designer of ${info.name} (${info.handle}) on Instagram. Design ONE finished post image.`,
     '',
     `STORY (facts only — do not add any): ${story}`,
     `FORMAT: ${dims}, portrait, edge to edge, no border, no mock-up, no phone frame.`,
     '',
     'PHOTO:',
-    photo
+    !PHOTO_LAYOUTS.has(key)
+      ? '• This layout uses no photo: type, paper and graphic marks only. Do not add any person or scene.'
+      : photo
       ? `• I am attaching a real photo of ${subject}. Use it as the hero image EXACTLY as given: do not redraw, retouch, beautify, age, slim or change the face, body, hair, kit, numbers or logos in it. You may only crop, scale, place, colour-grade and darken it.`
       : `• No photo is attached. Do NOT invent the face of a real person. Use a real-looking scene without a recognisable face: the athlete seen from behind or in silhouette against stadium lights, or a close-up of the equipment (ball, javelin, bat, medal) in the venue, shallow depth of field.`,
-    `• If you cannot keep a real person's face unchanged, leave the photo area as a dark neutral placeholder rather than generating a lookalike.`,
+    PHOTO_LAYOUTS.has(key) ? `• If you cannot keep a real person's face unchanged, leave the photo area as a dark neutral placeholder rather than generating a lookalike.` : null,
     '',
     `LAYOUT — ${L.title}:`,
     ...L.layout.map((x) => `• ${x}`),
@@ -360,14 +392,14 @@ export function posterPrompt(item, { brand = 'tsb', words = {}, template = '', s
     ...textLines(brand, key, w, item, when).map((x) => `• ${x}`),
     '',
     'LOOK:',
-    ...(brand === 'musc' ? MUSC_LOOK : TSB_LOOK).map((x) => `• ${x}`),
+    ...(brand === 'musc' ? MUSC_LOOK : TSB_LOOK).filter((x) => METAL_LAYOUTS.has(key) || !/^METAL:/.test(x)).filter((x) => PHOTO_LAYOUTS.has(key) || !/^PHOTO GRADE:/.test(x)).map((x) => `• ${x}`),
     '',
     'MUST NOT LOOK AI-GENERATED:',
     ...NOT_AI.map((x) => `• ${x}`),
     '',
     'BEFORE YOU FINISH, CHECK: every word matches the TEXT list letter for letter; no extra text; faces untouched; hands and numbers correct; the badge circle is empty; nothing is cropped at the edges.',
   ];
-  return out.join('\n');
+  return out.filter((x) => x !== null).join('\n');
 }
 
 // A short follow-up the owner can paste if the first image is off.
