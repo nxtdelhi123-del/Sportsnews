@@ -245,6 +245,34 @@ Measured again against the grid after §2.6, what still read as "template":
   masthead, competition and status line, centred headline, flags with full team
   names, scorers with minutes under each side, centred explainer, rule, handle.
 
+## 2.9 Photos that already carry text — 18 Oct 2026
+
+The owner often pastes a screenshot of another post, so the photo already has words
+on it and the Studio's headline landed on top of them. Now, after the athlete is
+found, a text detector (PP-OCRv3 det, 2.4 MB, Apache-2.0, `public/studio/models/
+textdet.onnx`, run with the same ONNX Runtime Web) marks the printed text:
+
+- Text in a band at the top or the bottom → the crop uses only the clean rows
+  (`cleanBand` + `cropHero({ band })`), as long as the photo does not have to be
+  blown up more than 1.9× and the athlete's head stays in.
+- Text running through the middle, or too little clean photo left → the athlete is
+  cut out and stands on a heavily blurred, dimmed backdrop (blur 36 px, brightness
+  0.5), so no printed word survives.
+- No athlete found and text in the way → the photo is used as it is, and the toast
+  says so.
+
+Printed words are never part of the athlete: every text box is cleared from the
+salience mask with feathered edges before the cut-out (small type wholly on the
+athlete, a jersey name or number, stays). When the cleared text cut through more than
+30% of what is left of the athlete, the photo is used as it is and the toast asks for
+a clean photo. Several renders can be in flight (the quick first draw, then the one
+with the athlete found); only the latest reaches the screen.
+
+The toast names what happened ("Text on the photo cropped away", "… runs through it:
+athlete cut out instead"). Checked in headless Chromium with a poster that carries
+text through the middle (athlete cut out, text gone), a photo with a caption band at
+the bottom (band cropped away) and a plain photo (unchanged).
+
 ## 3. Phases
 
 ### Phase 1 — Posters from live data (1 session) — DONE 2026-10-18 (PR #12)

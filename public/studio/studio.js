@@ -1,4 +1,4 @@
-import { findSubject, cropHero, cutoutOf } from '/studio/cutout.js';
+import { findSubject, findText, cropHero, cutoutOf, cleanBand, withoutText } from '/studio/cutout.js';
 
 const ASPECT = { post: 1080 / 1350, story: 1080 / 1920, square: 1 };
 
@@ -128,6 +128,9 @@ function updatePreview() {
   const words = edits();
   if (state.photo || words || state.current.story?.source === 'pasted') {
     // Own photo, own words or a pasted story: render through POST, show and share the returned file.
+    // Several renders can be in flight (the quick first draw, then the one with the athlete found);
+    // only the latest one may reach the screen.
+    const seq = (state.renderSeq = (state.renderSeq || 0) + 1);
     $('#packImg').style.opacity = 0.4;
     const body = { brand: state.brand, key: state.current.key, size: state.size, template: state.template || undefined, ...(state.photo || {}), words: words || undefined, ...custom(state.current) };
     state.file = fetch('/api/studio/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -136,6 +139,7 @@ function updatePreview() {
         return r.blob();
       })
       .then((b) => {
+        if (seq !== state.renderSeq) return null;
         const objUrl = URL.createObjectURL(b);
         $('#packImg').src = objUrl;
         $('#packImg').style.opacity = 1;
@@ -143,6 +147,7 @@ function updatePreview() {
         return new File([b], `${state.brand}-${state.size}.png`, { type: 'image/png' });
       })
       .catch((e) => {
+        if (seq !== state.renderSeq) return null;
         $('#packImg').style.opacity = 1;
         toast(`Drawing failed: ${e.message}`);
         return null;
@@ -176,18 +181,43 @@ function shrink(im, max = 1600) {
   return c.toDataURL('image/jpeg', 0.86);
 }
 // Build the hero (and the cut-out) for the current poster shape from the photo in memory.
+// Text already printed on the photo is cropped away when it sits in a band at the top or
+// the bottom; when it runs through the middle, the athlete is cut out instead.
 function buildPhoto() {
-  const { image, subject } = state.src;
+  const { image, text } = state.src;
   const aspect = ASPECT[state.size] || ASPECT.post;
-  const cutOn = $('#cutoutOn').checked && subject?.box;
-  const { hero, subjectY } = cropHero(image, subject, aspect, { blur: cutOn ? 22 : 0 });
-  // Subject low in the frame → the headline goes to the top.
+  const boxes = text?.boxes || [];
+  const hasText = boxes.length > 0 && text.coverage > 0.004;
+  // Printed words are never part of the athlete.
+  const subject = hasText ? withoutText(state.src.subject, boxes) : state.src.subject;
+  let cutOn = $('#cutoutOn').checked && subject?.box;
+  let band = null;
+  let note = '';
+  if (hasText && !cutOn) {
+    band = cleanBand(boxes, subject?.box);
+    const trial = cropHero(image, subject, aspect, { band });
+    if (band.middle || trial.zoom > 1.9 || band.bottom - band.top < 0.45) {
+      // Text runs through the picture: only the athlete can be kept.
+      if (subject?.box && (subject.textOverlap || 0) < 0.3) {
+        cutOn = true;
+        note = 'Text on the photo runs through it: athlete cut out instead.';
+      } else {
+        band = null;
+        note = subject?.box ? 'Text on the photo covers the athlete; used as it is. A clean photo works best.' : 'Text on the photo; could not avoid it.';
+      }
+    } else {
+      note = 'Text on the photo cropped away.';
+    }
+  }
+  const forced = cutOn && !$('#cutoutOn').checked;
+  const { hero, subjectY } = cropHero(image, subject, aspect, { blur: cutOn ? (forced ? 48 : 30) : 0, dim: forced ? 0.36 : 0.72, band: cutOn ? null : band });
   const layout = !cutOn && subject?.box && subjectY > 0.58 ? 'top' : 'bottom';
   state.photo = { hero, layout };
   if (cutOn) {
     const { cutout, aspect: cutAspect } = cutoutOf(image, subject);
     state.photo = { hero, cutout, cutoutAspect: cutAspect, layout: 'bottom' };
   }
+  state.photoNote = note;
 }
 async function usePhoto(src) {
   let im;
@@ -199,8 +229,8 @@ async function usePhoto(src) {
   }
   if (!state.template || !/dark|result/.test(state.template)) state.template = state.brand === 'tsb' ? 'tsb-dark' : 'musc-result';
   document.querySelectorAll('#tplSeg button').forEach((x) => x.classList.toggle('active', x.dataset.tpl === state.template));
-  // Draw at once with a centred crop; then find the athlete and draw again with the crop and the headline placed around them.
-  state.src = { image: im, subject: null };
+  // Draw at once with a centred crop; then find the athlete and any printed text, and draw again around them.
+  state.src = { image: im, subject: null, text: null };
   buildPhoto();
   updatePreview();
   try {
@@ -209,10 +239,18 @@ async function usePhoto(src) {
     });
     if (state.src?.image !== im) return;
     state.src.subject = subject;
+    let text = null;
+    try {
+      text = await findText(im, { onProgress: (p) => toast(p < 1 ? `Getting the text model… ${Math.round(p * 100)}%` : 'Checking for text on the photo…', true) });
+    } catch {
+      /* no text check; the photo is used as it is */
+    }
+    if (state.src?.image !== im) return;
+    state.src.text = text;
     hideToast();
     buildPhoto();
     updatePreview();
-    toast(subject.box ? ($('#cutoutOn').checked ? 'Athlete cut out. Re-drawing…' : 'Athlete found. Re-drawing…') : 'No clear subject found; using the photo as it is.');
+    toast(state.photoNote || (subject.box ? ($('#cutoutOn').checked ? 'Athlete cut out. Re-drawing…' : 'Athlete found. Re-drawing…') : 'No clear subject found; using the photo as it is.'));
   } catch (e) {
     hideToast();
     toast(`Photo kept as it is (${e.message}).`);
