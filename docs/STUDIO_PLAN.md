@@ -224,6 +224,27 @@ laptop including the model load; later ones take a few seconds.
   Olympics.com. Fetched 28 at a time inside the 9 s budget; slow ones finish on the
   next pass.
 
+## 2.8 Closer to the grid — 18 Oct 2026 (PR "Studio: posters that read as the page's")
+
+Measured again against the grid after §2.6, what still read as "template":
+
+- **The blurred backdrop.** The page's posters use the sharp photo full-bleed with the
+  athlete placed on purpose. Now the default: the desk finds the athlete with the
+  salience model, crops the photo to the poster's shape with the athlete's centre of
+  mass about 38% down and the whole figure inside the frame, grades it a touch
+  (contrast, saturation), and re-crops when the shape changes. When the athlete sits
+  low in the photo, the headline moves to the top (`layout: 'top'`). "Athlete in
+  front" (the cut-out over a blurred backdrop) is now the option, off by default.
+- **Clip art.** The medal coin and the flag chip are gone from the dark poster.
+  India is a tricolour light (saffron top-left, green bottom-right) over the photo
+  and a small tricolour rule in the footer. A vignette darkens the corners.
+- **Type.** The metal word spans the measure (up to 300 px on a post), with a bevel
+  highlight and a soft shadow (two text shadows). Masthead line "THE SPORTS BINGE"
+  beside a small badge top-left; competition lockup top-right.
+- **Cream.** Now the page's magazine page: "THE SPORTS BINGE / ONLINE MAGAZINE"
+  masthead, competition and status line, centred headline, flags with full team
+  names, scorers with minutes under each side, centred explainer, rule, handle.
+
 ## 3. Phases
 
 ### Phase 1 — Posters from live data (1 session) — DONE 2026-10-18 (PR #12)

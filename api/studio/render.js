@@ -59,7 +59,8 @@ export default async function handler(req, res) {
   try {
     const base = pasted ? await pastedPack(brand, pasted) : await buildPack(brand, key);
     if (!base) return sendJSON(res, 404, { error: 'Story not found (it may have left the window)' });
-    const pack = edits ? { ...base, words: { ...base.words, ...edits } } : base;
+    const layout = body.layout === 'top' || body.layout === 'bottom' ? body.layout : undefined;
+    const pack = edits || layout ? { ...base, words: { ...base.words, ...(edits || {}) }, layout } : base;
     if (json) return sendJSON(res, 200, pack);
     const own = !!(body.hero || body.cutout || body.heroUrl || pasted);
     const render = async () => {

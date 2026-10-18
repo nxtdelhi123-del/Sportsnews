@@ -1,9 +1,11 @@
-import { cutOut } from '/studio/cutout.js';
+import { findSubject, cropHero, cutoutOf } from '/studio/cutout.js';
+
+const ASPECT = { post: 1080 / 1350, story: 1080 / 1920, square: 1 };
 
 const $ = (s) => document.querySelector(s);
 const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const TEMPLATES = { tsb: ['tsb-dark', 'tsb-cream'], musc: ['musc-result', 'musc-matchday'] };
-const state = { brand: localStorage.getItem('studio:brand') || 'tsb', packs: [], current: null, size: 'post', template: null, photo: null, rejected: new Set(JSON.parse(localStorage.getItem('studio:rejected') || '[]')), cutout: localStorage.getItem('studio:cutout') !== 'off' };
+const state = { brand: localStorage.getItem('studio:brand') || 'tsb', packs: [], current: null, size: 'post', template: null, photo: null, src: null, rejected: new Set(JSON.parse(localStorage.getItem('studio:rejected') || '[]')), cutout: localStorage.getItem('studio:cutout') === 'on' };
 
 const renderUrl = (p, size = 'post', template = null, w = 0) => `/api/studio/render?brand=${state.brand}&key=${encodeURIComponent(p.key)}&size=${size}${template ? '&template=' + template : ''}${w ? '&w=' + w : ''}`;
 // Stories pasted by the owner are not in the newsroom: every render carries the story itself.
@@ -95,6 +97,7 @@ async function openPack(p) {
   state.current = p;
   state.template = null;
   state.photo = null;
+  state.src = null;
   $('#photoIn').value = '';
   $('#photoUrl').value = '';
   $('#packTitle').textContent = p.story.name || p.story.title || 'Post';
@@ -172,6 +175,20 @@ function shrink(im, max = 1600) {
   c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', 0.86);
 }
+// Build the hero (and the cut-out) for the current poster shape from the photo in memory.
+function buildPhoto() {
+  const { image, subject } = state.src;
+  const aspect = ASPECT[state.size] || ASPECT.post;
+  const cutOn = $('#cutoutOn').checked && subject?.box;
+  const { hero, subjectY } = cropHero(image, subject, aspect, { blur: cutOn ? 22 : 0 });
+  // Subject low in the frame → the headline goes to the top.
+  const layout = !cutOn && subject?.box && subjectY > 0.58 ? 'top' : 'bottom';
+  state.photo = { hero, layout };
+  if (cutOn) {
+    const { cutout, aspect: cutAspect } = cutoutOf(image, subject);
+    state.photo = { hero, cutout, cutoutAspect: cutAspect, layout: 'bottom' };
+  }
+}
 async function usePhoto(src) {
   let im;
   try {
@@ -182,23 +199,23 @@ async function usePhoto(src) {
   }
   if (!state.template || !/dark|result/.test(state.template)) state.template = state.brand === 'tsb' ? 'tsb-dark' : 'musc-result';
   document.querySelectorAll('#tplSeg button').forEach((x) => x.classList.toggle('active', x.dataset.tpl === state.template));
-  state.photo = { hero: shrink(im) };
+  // Draw at once with a centred crop; then find the athlete and draw again with the crop and the headline placed around them.
+  state.src = { image: im, subject: null };
+  buildPhoto();
   updatePreview();
-  if (!$('#cutoutOn').checked) {
-    toast('Photo added. Re-drawing…');
-    return;
-  }
   try {
-    const res = await cutOut(im, {
-      onProgress: (p, m) => toast(p < 1 ? `Getting the cut-out model (${m.size} MB, once)… ${Math.round(p * 100)}%` : 'Cutting the athlete out…', true),
+    const subject = await findSubject(im, {
+      onProgress: (p, m) => toast(p < 1 ? `Getting the photo model (${m.size} MB, once)… ${Math.round(p * 100)}%` : 'Finding the athlete…', true),
     });
-    state.photo = { hero: res.hero, cutout: res.cutout, cutoutAspect: res.box.w / res.box.h * (im.width / im.height) };
+    if (state.src?.image !== im) return;
+    state.src.subject = subject;
     hideToast();
+    buildPhoto();
     updatePreview();
-    toast('Cut out. Re-drawing…');
+    toast(subject.box ? ($('#cutoutOn').checked ? 'Athlete cut out. Re-drawing…' : 'Athlete found. Re-drawing…') : 'No clear subject found; using the photo as it is.');
   } catch (e) {
     hideToast();
-    toast(`No cut-out (${e.message}). Using the photo as the background.`);
+    toast(`Photo kept as it is (${e.message}).`);
   }
 }
 async function usePhotoLink(url) {
@@ -254,6 +271,7 @@ $('#sizeSeg').addEventListener('click', (e) => {
   if (!b) return;
   state.size = b.dataset.size;
   document.querySelectorAll('#sizeSeg button').forEach((x) => x.classList.toggle('active', x === b));
+  if (state.src) buildPhoto();
   updatePreview();
 });
 $('#tplSeg').addEventListener('click', (e) => {
@@ -272,6 +290,10 @@ $('#photoUrl').addEventListener('keydown', (e) => e.key === 'Enter' && (e.preven
 $('#cutoutOn').addEventListener('change', (e) => {
   state.cutout = e.target.checked;
   localStorage.setItem('studio:cutout', state.cutout ? 'on' : 'off');
+  if (state.src) {
+    buildPhoto();
+    updatePreview();
+  }
 });
 $('#copyCaption').addEventListener('click', async () => {
   await navigator.clipboard.writeText($('#fCaption').value);
