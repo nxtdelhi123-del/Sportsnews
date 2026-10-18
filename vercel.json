@@ -3,7 +3,7 @@
   "cleanUrls": true,
   "functions": {
     "api/*.js": { "maxDuration": 60 },
-    "api/studio/*.js": { "maxDuration": 60, "includeFiles": "lib/studio/fonts/**" }
+    "api/studio/*.js": { "maxDuration": 60, "includeFiles": "{lib/studio/fonts/**,public/studio/brand/**}" }
   },
   "headers": [
     {

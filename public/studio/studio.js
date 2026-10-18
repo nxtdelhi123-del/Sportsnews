@@ -74,6 +74,32 @@ function updatePreview() {
   $('#packImg').src = url;
   $('#download').href = url;
   $('#download').download = `${state.brand}-${state.size}.png`;
+  // Fetch the file now so the Share tap can hand it over immediately (share sheets need a fresh tap).
+  state.file = fetch(url)
+    .then((r) => r.blob())
+    .then((b) => new File([b], `${state.brand}-${state.size}.png`, { type: 'image/png' }))
+    .catch(() => null);
+}
+
+async function share() {
+  const caption = $('#fCaption').value;
+  try {
+    await navigator.clipboard.writeText(caption);
+  } catch {
+    /* clipboard may be unavailable; the share text carries the caption too */
+  }
+  const file = await state.file;
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: $('#fHeadline').value, text: caption });
+      fetch('/api/studio/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand: state.brand, key: state.current.key, decision: 'approve', type: state.current.type, score: state.current.score, sport: state.current.story.sport, competition: state.current.story.league?.name, headline: $('#fHeadline').value }) }).catch(() => {});
+      toast('Caption copied. Paste it in Instagram.');
+    } catch (e) {
+      if (e?.name !== 'AbortError') toast('Sharing failed here. Use Download.');
+    }
+  } else {
+    toast('This browser can’t share files. Use Download, then post from your gallery.');
+  }
 }
 
 $('#brandTabs').addEventListener('click', (e) => {
@@ -102,6 +128,7 @@ $('#tplSeg').addEventListener('click', (e) => {
   document.querySelectorAll('#tplSeg button').forEach((x) => x.classList.toggle('active', x === b));
   updatePreview();
 });
+$('#share').addEventListener('click', share);
 $('#copyCaption').addEventListener('click', async () => {
   await navigator.clipboard.writeText($('#fCaption').value);
   toast('Caption copied');
