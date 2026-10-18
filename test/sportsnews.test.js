@@ -935,7 +935,7 @@ test('studio: every kind has its own layout, with alternatives on the desk', asy
 });
 
 // ---- AI prompts in the pages' style ----
-import { posterPrompt, kindOf, headlineFor } from '../public/js/prompts.js';
+import { posterPrompt, kindOf, headlineFor, styleRef } from '../public/js/prompts.js';
 
 test('AI prompts carry the page style, the exact words and the anti-AI rules', () => {
   const n = { kind: 'news', title: "Parul Chaudhary wins bronze in women's 5000m at Asian Games", summary: 'She clocked 15:14.61.', sport: 'athletics' };
@@ -946,7 +946,10 @@ test('AI prompts carry the page style, the exact words and the anti-AI rules', (
   assert.match(p, /TOP LINE: "PARUL CHAUDHARY"/);
   assert.match(p, /BIG WORD: "BRONZE"/);
   assert.match(p, /do not redraw, retouch/i);
-  assert.match(p, /do NOT draw any brand badge/i);
+  assert.match(p, /do NOT draw or imitate any brand badge/i);
+  assert.match(p, /STYLE REFERENCE, a real @thesportsbinge post in this exact layout: https:\/\/sportsnews-delta\.vercel\.app\/studio\/refs\/tsb-medal-top\.jpg/);
+  assert.match(p, /our badge: https:\/\/sportsnews-delta\.vercel\.app\/studio\/brand\/tsb-badge\.png/);
+  assert.match(p, /Copy NOTHING else from it/);
   assert.match(p, /plastic or airbrushed skin/);
   const m = { kind: 'match', status: { state: 'post' }, home: { name: 'Manchester United', score: '4' }, away: { name: 'Burnley', score: '1' }, league: { name: 'Premier League' }, events: [] };
   const q = posterPrompt(m, { brand: 'musc' });
@@ -973,4 +976,36 @@ test('AI prompts: no-photo layouts say so, scorers sit under their team, fixed w
   assert.match(p, /EMPTY square outline/);
   assert.match(p, /AI prompt · MUSC/);
   assert.match(posterPrompt(m, { brand: 'musc' }), /HEADLINE: "ONE POINT\. MORE QUESTIONS\."/);
+});
+
+test('AI prompts: the shape of the story picks the layout and its real style reference', async () => {
+  const { existsSync } = await import('node:fs');
+  const news = (title, summary = '', words) => [{ kind: 'news', title, summary }, words ? { words } : {}];
+  const team = news("India's men's 50m rifle 3P team win silver at Asian Games", 'Aishwary Pratap Singh Tomar, Rudrankksh Patil and Niraj Kumar took silver.');
+  assert.equal(styleRef(...team).key, 'team');
+  const tp = posterPrompt(...team);
+  assert.match(tp, /BIG WORD: "SILVER"/);
+  assert.match(tp, /NAMES ROW \(one per column\): "AISHWARY PRATAP SINGH TOMAR \| RUDRANKKSH PATIL \| NIRAJ KUMAR"/);
+  const duo = posterPrompt(...news('Yashvir Singh wins silver, Rohit Yadav bronze in javelin', 'Double podium for India.'));
+  assert.match(duo, /HEADLINE: "DOUBLE PODIUM\."/);
+  assert.match(duo, /LEFT COLUMN: "YASHVIR SINGH \/ SILVER"[\s\S]*RIGHT COLUMN: "ROHIT YADAV \/ BRONZE"/);
+  const two = news("India's men and women both into the kabaddi finals", 'Women beat Nepal: India 48-24 Nepal. Men beat Thailand: India 66-28 Thailand.');
+  assert.equal(styleRef(...two).key, 'scores');
+  const sp = posterPrompt(...two);
+  assert.match(sp, /HEADLINE: "ONE DAY\. TWO FINALS\."/);
+  assert.match(sp, /SCORE PANEL 1: "WOMEN: INDIA 48–24 NEPAL"[\s\S]*SCORE PANEL 2: "MEN: INDIA 66–28 THAILAND"/);
+  assert.equal(styleRef(...news('Anahat Singh reaches Asian Games final', 'Fights back from 0-2 down.')).key, 'side-panel');
+  const pole = news('Russell on pole in Baku', 'Strongest qualifying of the season.', { headline: 'RUSSELL ON POLE', stats: [{ value: '1:42.526', label: 'P1 George Russell' }, { value: '+0.037', label: 'P2 Charles Leclerc' }] });
+  assert.equal(styleRef(...pole).key, 'table');
+  assert.match(posterPrompt(...pole), /TABLE ROW: "1:42\.526 — P1 George Russell"/);
+  // a layout the owner picked in the Studio wins over the story's shape
+  assert.equal(styleRef(team[0], { template: 'tsb-phrase', pinned: true }).key, 'phrase');
+  // every layout points at a reference that ships with the site
+  for (const brand of ['tsb', 'musc'])
+    for (const tpl of ['medal-top', 'medal-bottom', 'phrase', 'number', 'quote', 'cream', 'result-photo', 'preview', 'vs', 'tally', 'verdict', 'cover', 'head', 'head-left', 'head-slant', 'matchday', 'result', 'statement', 'signing']) {
+      const r = styleRef(team[0], { brand, template: `${brand}-${tpl}`, pinned: true });
+      assert.ok(existsSync(new URL(`../public${new URL(r.url).pathname}`, import.meta.url)), r.url);
+      assert.ok(existsSync(new URL(`../public${new URL(r.badge).pathname}`, import.meta.url)), r.badge);
+    }
+  assert.match(posterPrompt({ kind: 'match', status: { state: 'post' }, home: { name: 'Manchester United', score: '2' }, away: { name: 'Arsenal', score: '1' }, league: { name: 'Premier League' } }, { brand: 'musc' }), /STYLE REFERENCE for type, colour and grade only[^\n]*musc-matchday\.jpg/);
 });
