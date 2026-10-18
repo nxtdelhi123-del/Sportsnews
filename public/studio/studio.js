@@ -1,7 +1,9 @@
+import { cutOut } from '/studio/cutout.js';
+
 const $ = (s) => document.querySelector(s);
 const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const TEMPLATES = { tsb: ['tsb-cream', 'tsb-dark'], musc: ['musc-result', 'musc-matchday'] };
-const state = { brand: localStorage.getItem('studio:brand') || 'tsb', packs: [], current: null, size: 'post', template: null, rejected: new Set(JSON.parse(localStorage.getItem('studio:rejected') || '[]')) };
+const TEMPLATES = { tsb: ['tsb-dark', 'tsb-cream'], musc: ['musc-result', 'musc-matchday'] };
+const state = { brand: localStorage.getItem('studio:brand') || 'tsb', packs: [], current: null, size: 'post', template: null, photo: null, rejected: new Set(JSON.parse(localStorage.getItem('studio:rejected') || '[]')), cutout: localStorage.getItem('studio:cutout') !== 'off' };
 
 const renderUrl = (p, size = 'post', template = null, w = 0) => `/api/studio/render?brand=${state.brand}&key=${encodeURIComponent(p.key)}&size=${size}${template ? '&template=' + template : ''}${w ? '&w=' + w : ''}`;
 
@@ -36,25 +38,67 @@ function render() {
     .join('');
 }
 
-function toast(msg) {
+let toastTimer;
+function toast(msg, sticky = false) {
   const t = $('#toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
+  clearTimeout(toastTimer);
+  if (!sticky) toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+const hideToast = () => $('#toast').classList.remove('show');
+
+// ---- the words the owner can change ----
+const statsText = (stats = []) => stats.map((s) => `${s.value} ${s.label}`.trim()).join(' | ');
+const parseStats = (txt) =>
+  txt
+    .split('|')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((s) => {
+      const [value, ...label] = s.split(/\s+/);
+      return { value, label: label.join(' ') };
+    });
+function fillFields(words) {
+  $('#fHeadline').value = words.headline || '';
+  $('#fName').value = words.name || '';
+  $('#fKicker').value = words.kicker || '';
+  $('#fStats').value = statsText(words.stats);
+  $('#fCaption').value = words.caption || '';
+}
+function edits() {
+  const w = state.current.words;
+  const out = {};
+  const headline = $('#fHeadline').value.trim();
+  const name = $('#fName').value.trim();
+  const kicker = $('#fKicker').value.trim();
+  const stats = parseStats($('#fStats').value);
+  if (headline && headline !== w.headline) out.headline = headline;
+  if (name !== (w.name || '')) out.name = name;
+  if (kicker !== (w.kicker || '')) out.kicker = kicker;
+  if (statsText(stats) !== statsText(w.stats)) out.stats = stats;
+  if (out.headline) {
+    // Keep the metal on the last word when the owner rewrites a medal headline.
+    const last = out.headline.split(/\s+/).pop().toLowerCase().replace(/[.,!?]/g, '');
+    if (/^(gold|silver|bronze|podium|later|ever|final|assured|record|history|made|guilty)$/.test(last)) out.accentWords = [last];
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 async function open(i) {
   const p = state.packs[i];
   state.current = p;
   state.template = null;
-  state.hero = null;
+  state.photo = null;
   $('#photoIn').value = '';
+  $('#photoUrl').value = '';
   $('#packTitle').textContent = p.story.name || p.story.title || 'Post';
-  $('#fHeadline').value = p.words.headline;
-  $('#fCaption').value = p.words.caption;
+  fillFields(p.words);
   $('#packMeta').textContent = `${p.type} · score ${p.score} · ${p.reason || ''} · words by ${p.words.by || 'formula'}`;
   $('#tplSeg').innerHTML = [...TEMPLATES[state.brand], ...(p.type === 'tally' && state.brand === 'tsb' ? ['tsb-tally'] : [])].map((t) => `<button data-tpl="${t}" class="${t === p.template ? 'active' : ''}">${t.replace(/^\w+-/, '')}</button>`).join('');
   document.querySelectorAll('#sizeSeg button').forEach((b) => b.classList.toggle('active', b.dataset.size === state.size));
+  $('#cutoutOn').checked = state.cutout;
   updatePreview();
   $('#packDialog').showModal();
   // Words written by Claude arrive with the full pack.
@@ -62,8 +106,7 @@ async function open(i) {
     const full = await (await fetch(renderUrl(p) + '&json=1')).json();
     if (full?.words && state.current === p) {
       p.words = full.words;
-      $('#fHeadline').value = full.words.headline;
-      $('#fCaption').value = full.words.caption;
+      fillFields(full.words);
       $('#packMeta').textContent = `${p.type} · score ${p.score} · ${p.reason || ''} · words by ${full.words.by || 'formula'}`;
     }
   } catch {
@@ -74,10 +117,12 @@ async function open(i) {
 function updatePreview() {
   const url = renderUrl(state.current, state.size, state.template);
   $('#download').download = `${state.brand}-${state.size}.png`;
-  if (state.hero) {
-    // Own photo: render through POST, show and share the returned file.
+  const words = edits();
+  if (state.photo || words) {
+    // Own photo or own words: render through POST, show and share the returned file.
     $('#packImg').style.opacity = 0.4;
-    state.file = fetch('/api/studio/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand: state.brand, key: state.current.key, size: state.size, template: state.template || undefined, hero: state.hero }) })
+    const body = { brand: state.brand, key: state.current.key, size: state.size, template: state.template || undefined, ...(state.photo || {}), words: words || undefined };
+    state.file = fetch('/api/studio/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error || r.status);
         return r.blob();
@@ -91,7 +136,7 @@ function updatePreview() {
       })
       .catch((e) => {
         $('#packImg').style.opacity = 1;
-        toast(`Photo failed: ${e.message}`);
+        toast(`Drawing failed: ${e.message}`);
         return null;
       });
     return;
@@ -105,27 +150,65 @@ function updatePreview() {
     .catch(() => null);
 }
 
-// Shrink the chosen photo on the phone so the request stays small, then re-draw.
-function usePhoto(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
+// ---- photos: a file from the phone or a pasted link; the athlete cut out on the phone ----
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
     const im = new Image();
-    im.onload = () => {
-      const max = 1600;
-      const k = Math.min(1, max / Math.max(im.width, im.height));
-      const c = document.createElement('canvas');
-      c.width = Math.round(im.width * k);
-      c.height = Math.round(im.height * k);
-      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-      state.hero = c.toDataURL('image/jpeg', 0.86);
-      if (!state.template || !/dark|result/.test(state.template)) state.template = state.brand === 'tsb' ? 'tsb-dark' : 'musc-result';
-      document.querySelectorAll('#tplSeg button').forEach((x) => x.classList.toggle('active', x.dataset.tpl === state.template));
-      updatePreview();
-      toast('Photo added. Re-drawing…');
-    };
-    im.src = reader.result;
-  };
-  reader.readAsDataURL(file);
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('That is not a picture this browser can open'));
+    im.src = src;
+  });
+}
+function shrink(im, max = 1600) {
+  const k = Math.min(1, max / Math.max(im.width, im.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(im.width * k);
+  c.height = Math.round(im.height * k);
+  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.86);
+}
+async function usePhoto(src) {
+  let im;
+  try {
+    im = await loadImage(src);
+  } catch (e) {
+    toast(e.message);
+    return;
+  }
+  if (!state.template || !/dark|result/.test(state.template)) state.template = state.brand === 'tsb' ? 'tsb-dark' : 'musc-result';
+  document.querySelectorAll('#tplSeg button').forEach((x) => x.classList.toggle('active', x.dataset.tpl === state.template));
+  state.photo = { hero: shrink(im) };
+  updatePreview();
+  if (!$('#cutoutOn').checked) {
+    toast('Photo added. Re-drawing…');
+    return;
+  }
+  try {
+    const res = await cutOut(im, {
+      onProgress: (p, m) => toast(p < 1 ? `Getting the cut-out model (${m.size} MB, once)… ${Math.round(p * 100)}%` : 'Cutting the athlete out…', true),
+    });
+    state.photo = { hero: res.hero, cutout: res.cutout, cutoutAspect: res.box.w / res.box.h * (im.width / im.height) };
+    hideToast();
+    updatePreview();
+    toast('Cut out. Re-drawing…');
+  } catch (e) {
+    hideToast();
+    toast(`No cut-out (${e.message}). Using the photo as the background.`);
+  }
+}
+async function usePhotoLink(url) {
+  if (!/^https?:\/\//i.test(url)) return toast('Paste a full picture link (https://…)');
+  toast('Fetching the picture…', true);
+  try {
+    const r = await fetch(`/api/studio/photo?url=${encodeURIComponent(url)}`);
+    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+    const blob = await r.blob();
+    hideToast();
+    usePhoto(URL.createObjectURL(blob));
+  } catch (e) {
+    hideToast();
+    toast(e.message);
+  }
 }
 
 async function share() {
@@ -139,7 +222,7 @@ async function share() {
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: $('#fHeadline').value, text: caption });
-      fetch('/api/studio/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand: state.brand, key: state.current.key, decision: 'approve', type: state.current.type, score: state.current.score, sport: state.current.story.sport, competition: state.current.story.league?.name, headline: $('#fHeadline').value }) }).catch(() => {});
+      fetch('/api/studio/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brand: state.brand, key: state.current.key, decision: edits() ? 'edit' : 'approve', type: state.current.type, score: state.current.score, sport: state.current.story.sport, competition: state.current.story.league?.name, headline: $('#fHeadline').value, edited: edits() || undefined }) }).catch(() => {});
       toast('Caption copied. Paste it in Instagram.');
     } catch (e) {
       if (e?.name !== 'AbortError') toast('Sharing failed here. Use Download.');
@@ -175,8 +258,16 @@ $('#tplSeg').addEventListener('click', (e) => {
   document.querySelectorAll('#tplSeg button').forEach((x) => x.classList.toggle('active', x === b));
   updatePreview();
 });
+$('#redraw').addEventListener('click', updatePreview);
+for (const id of ['#fHeadline', '#fName', '#fKicker', '#fStats']) $(id).addEventListener('keydown', (e) => e.key === 'Enter' && (e.preventDefault(), updatePreview()));
 $('#share').addEventListener('click', share);
-$('#photoIn').addEventListener('change', (e) => e.target.files[0] && usePhoto(e.target.files[0]));
+$('#photoIn').addEventListener('change', (e) => e.target.files[0] && usePhoto(URL.createObjectURL(e.target.files[0])));
+$('#photoGo').addEventListener('click', () => usePhotoLink($('#photoUrl').value.trim()));
+$('#photoUrl').addEventListener('keydown', (e) => e.key === 'Enter' && (e.preventDefault(), usePhotoLink($('#photoUrl').value.trim())));
+$('#cutoutOn').addEventListener('change', (e) => {
+  state.cutout = e.target.checked;
+  localStorage.setItem('studio:cutout', state.cutout ? 'on' : 'off');
+});
 $('#copyCaption').addEventListener('click', async () => {
   await navigator.clipboard.writeText($('#fCaption').value);
   toast('Caption copied');

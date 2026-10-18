@@ -38,13 +38,24 @@
       <div class="pack-fields">
         <div class="seg" id="sizeSeg"><button data-size="post" class="active">Post 4:5</button><button data-size="story">Story 9:16</button><button data-size="square">Square</button></div>
         <div class="seg" id="tplSeg"></div>
-        <label>Headline<input id="fHeadline"></label>
-        <label>Caption<textarea id="fCaption" rows="7"></textarea></label>
+        <div class="fields-grid">
+          <label>Headline<input id="fHeadline" autocomplete="off"></label>
+          <label>Name line<input id="fName" placeholder="WOMEN'S 5000M · or the athlete" autocomplete="off"></label>
+          <label>Kicker<input id="fKicker" placeholder="INDIA'S FIRST MEDAL IN 44 YEARS" autocomplete="off"></label>
+          <label>Stats<input id="fStats" placeholder="15:14.61 Time | NR National record" autocomplete="off"></label>
+        </div>
+        <div class="row-actions"><button id="redraw" class="btn ghost" type="button" title="Draw the poster again with your words">↻ Redraw</button><span class="muted small">Enter in a field redraws too.</span></div>
+        <div class="photo-row">
+          <label class="btn ghost" for="photoIn" title="A picture from your phone">🖼 Add photo<input id="photoIn" type="file" accept="image/*" hidden></label>
+          <input id="photoUrl" type="url" placeholder="…or paste a picture link" autocomplete="off">
+          <button id="photoGo" class="btn ghost" type="button">Fetch</button>
+          <label class="check"><input id="cutoutOn" type="checkbox" checked> Cut the athlete out</label>
+        </div>
+        <label>Caption<textarea id="fCaption" rows="6"></textarea></label>
         <div class="pack-actions">
           <button id="share" class="btn" type="button" title="Opens the share sheet with the poster; the caption is copied for you">📲 Share to Instagram</button>
           <button id="copyCaption" class="btn ghost" type="button">⧉ Copy caption</button>
           <a id="download" class="btn ghost" download>⬇ Download PNG</a>
-          <label class="btn ghost" for="photoIn" title="Use your own picture as the background">🖼 Add photo<input id="photoIn" type="file" accept="image/*" hidden></label>
           <button id="reject" class="btn ghost" type="button">✗ Not this</button>
         </div>
         <p id="packMeta" class="muted"></p>

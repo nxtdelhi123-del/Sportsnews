@@ -166,6 +166,41 @@ Still manual: the athlete photo (feed image → Wikipedia → "Add photo"), and 
 medal tally only appears when an outlet writes the numbers in a headline (no medal
 table source yet).
 
+## 2.6 The look — 18 Oct 2026 (PR "Studio: posters that look like the page")
+
+Measured against the grid, the Phase 1 posters lacked the photo, the stacked type,
+the layers and the finish. What ships now:
+
+- **Cut-outs on the phone.** `public/studio/cutout.js` runs a salience model
+  (silueta, the rembg author's U²-Net, 44 MB, Apache-2.0; u2netp 4.5 MB as the
+  fallback) with ONNX Runtime Web. The model is downloaded once from the site and
+  kept in the browser's cache. The photo never leaves the phone: the desk sends the
+  blurred, dimmed backdrop (canvas blur) and the PNG cut-out to the renderer. The
+  athlete stands in front of the headline, like the page's posters.
+- **Photo link.** `/api/studio/photo?url=` fetches a pasted picture (http(s) only,
+  8 MB cap, no private hosts) so the browser can read its pixels; same pipeline as
+  Add photo.
+- **tsb-dark v2** (`lib/studio/templates.js`): name line with an accent bar, stacked
+  headline (name in Playfair Black, the metal word huge in Bodoni Moda Black with a
+  five-stop metallic fill and a soft shadow), kicker with a metal bar, stats row,
+  medal with ribbon, competition lockup top-right with the flag, tricolour strip
+  along the bottom for India, film grain (a tiled turbulence pattern blended over the
+  SVG, ~0.1 s). Cream gets scorers under the score and nation flags; the tally gets
+  medals with ribbons and the tricolour; MUSC gets the owner's photo under the red
+  and the cut-out beside the score.
+- **Context lines.** `words.kicker`: the first clause or sentence with a first, a
+  record, a gap in years or a number not already in the stats, in caps. Claude
+  writes it too when the key is set (`kicker` in the schema, numbers validated).
+- **Editable redraw.** Headline, name line, kicker and stats are fields on the desk;
+  Redraw (or Enter) re-renders through `POST /api/studio/render` with `words`
+  overrides (`cleanWords`: whitelisted, bounded). Share records `edit` with the
+  edited words.
+- **Fonts added:** Bodoni Moda Black, Anton, Oswald Bold.
+
+Tested end to end in headless Chromium against the mock server: paste link → fetch →
+cut out (silueta) → redraw → edit words → redraw. ~14 s for the first cut-out on a
+laptop including the model load; later ones take a few seconds.
+
 ## 3. Phases
 
 ### Phase 1 — Posters from live data (1 session) — DONE 2026-10-18 (PR #12)
