@@ -2,7 +2,7 @@ import { buildPack } from '../../lib/studio/packs.js';
 import { BRANDS } from '../../lib/studio/score.js';
 import { renderPack, loadAssets } from '../../lib/studio/render.js';
 import { TEMPLATES, SIZES } from '../../lib/studio/templates.js';
-import { memoize, sendJSON, siteUrl } from '../../lib/http.js';
+import { memoize, sendJSON } from '../../lib/http.js';
 
 // GET /api/studio/render?brand=tsb&key=match:soccer/eng.1:740001&size=post|story&template=tsb-dark&json=1
 export default async function handler(req, res) {
@@ -16,9 +16,8 @@ export default async function handler(req, res) {
     const pack = await buildPack(brand, key);
     if (!pack) return sendJSON(res, 404, { error: 'Story not found (it may have left the window)' });
     if (json) return sendJSON(res, 200, pack);
-    const badgeUrl = `${siteUrl(req)}${BRANDS[brand].badge}`;
     const { png, template: used } = await memoize(`studio:png:${brand}:${key}:${size}:${template || ''}:${width}`, 3 * 60_000, async () => {
-      const assets = await loadAssets(pack, badgeUrl);
+      const assets = await loadAssets(pack, BRANDS[brand]);
       return renderPack({ ...pack, brand: BRANDS[brand], assets }, { size, template, width });
     });
     res.statusCode = 200;
