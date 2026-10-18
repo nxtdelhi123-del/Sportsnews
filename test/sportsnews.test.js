@@ -810,3 +810,70 @@ test('studio: the photo proxy fetches pictures only, from public hosts only', as
     globalThis.fetch = realFetch;
   }
 });
+
+// ---- Studio: pasted stories and the world's feeds ----
+import { parsePasted, cleanStory } from '../lib/studio/paste.js';
+import { NEWS_FEEDS } from '../lib/sources.js';
+import { toPoster } from '../public/js/format.js';
+
+test('studio: the newsroom’s own Copy text pastes back into a match or a headline', () => {
+  const [m] = normalizeScoreboard(fx.soccerScoreboard, EPL, NOW);
+  m.status = { state: 'post', detail: 'FT', short: 'FT', completed: true };
+  m.home.winner = true;
+  m.tier = 'vimp';
+  m.details = summaryDetails(fx.espnSummary, m);
+  for (const text of [toPoster(m, { timeZone: 'Asia/Kolkata' }), toText(m, { timeZone: 'Asia/Kolkata' })]) {
+    const s = parsePasted(text);
+    assert.equal(s.kind, 'match', text.slice(0, 40));
+    assert.equal(s.home.name, 'Arsenal');
+    assert.equal(s.away.name, 'Chelsea');
+    assert.deepEqual([s.home.score, s.away.score], ['2', '1']);
+    assert.equal(s.league.name, 'Premier League');
+    assert.equal(s.status.state, 'post');
+    assert.ok(s.events.some((e) => e.player === 'Bukayo Saka' && e.minute === "23'"), JSON.stringify(s.events));
+    assert.equal(cleanStory(s).home.name, 'Arsenal', 'the parsed story survives the desk round trip');
+  }
+  const n = parsePasted(newsPoster({ title: "Parul Chaudhary wins bronze in women's 5000m", summary: 'She clocked 15:14.61.', sport: 'athletics', source: 'The Hindu', link: 'https://x', published: new Date(NOW).toISOString(), tier: 'vimp' }));
+  assert.equal(n.kind, 'news');
+  assert.equal(n.title, "Parul Chaudhary wins bronze in women's 5000m");
+  assert.equal(n.summary, 'She clocked 15:14.61.');
+  assert.equal(n.sport, 'athletics');
+  const loose = parsePasted("Gulveer Singh wins silver in men's 10,000m at Asian Games\nHe clocked 28:38.63, a national record.\nhttps://pics.example/g.jpg");
+  assert.equal(loose.kind, 'news');
+  assert.equal(loose.image, 'https://pics.example/g.jpg');
+  assert.doesNotMatch(loose.summary, /https?:/);
+  assert.equal(parsePasted('India vs Pakistan hockey semi-final, October 1').kind, 'news', 'a sentence with "vs" is a headline, not a fixture');
+  assert.equal(parsePasted('   '), null);
+  assert.equal(cleanStory({ kind: 'match', home: { name: 'A' } }), null);
+  assert.equal(cleanStory({ kind: 'news', title: 'x', image: 'javascript:alert(1)' }).image, '');
+});
+
+test('studio: render draws a pasted story and refuses empty text', async () => {
+  mockFetchGlobal();
+  const { default: render } = await import('../api/studio/render.js?paste');
+  let res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', paste: "Parul Chaudhary wins bronze in women's 5000m at Asian Games\nShe clocked 15:14.61, a national record.", json: 1 }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 200, res.body);
+  const pack = JSON.parse(res.body);
+  assert.equal(pack.key, 'news:pasted');
+  assert.equal(pack.words.headline, 'PARUL CHAUDHARY BRONZE.');
+  assert.equal(pack.story.source, 'pasted');
+  res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', story: pack.story, size: 'post', w: 360 }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.headers['content-type'], 'image/png');
+  res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', paste: '⚽ Premier League\nArsenal 2 – 1 Chelsea\nStatus: FT', json: 1 }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(JSON.parse(res.body).template, 'tsb-cream');
+  res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', paste: '   ', json: 1 }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 400);
+});
+
+test('news feeds cover the world', () => {
+  assert.ok(NEWS_FEEDS.length >= 120, `${NEWS_FEEDS.length} feeds`);
+  const countries = NEWS_FEEDS.filter((f) => /Google News \(/.test(f.name)).length;
+  assert.ok(countries >= 25, `${countries} country editions`);
+  assert.ok(NEWS_FEEDS.some((f) => /Olympic/.test(f.url)));
+  assert.equal(new Set(NEWS_FEEDS.map((f) => f.url)).size, NEWS_FEEDS.length, 'no duplicate feed URLs');
+});
