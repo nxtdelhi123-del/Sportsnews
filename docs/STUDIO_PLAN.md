@@ -120,7 +120,7 @@ public/studio/*.js|css
 
 ## 3. Phases
 
-### Phase 1 — Posters from live data (1 session)
+### Phase 1 — Posters from live data (1 session) — DONE 2026-10-18 (PR #12)
 Done when: `/studio` shows today's top 20 stories for each brand, each with a rendered
 4:5 poster, caption and hashtags, and a Copy / Download button.
 1. `lib/studio/brands/*.js` with the profiles in §0 as data (interests, teams,

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NXT Studio</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/studio/studio.css">
+  <script type="module" src="/studio/studio.js"></script>
+</head>
+<body class="studio">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="NXT Sports home">
+      <picture><source srcset="/img/nxt-mark-dark.png" media="(prefers-color-scheme: dark)"><img class="brand-mark" src="/img/nxt-mark.png" alt="" width="95" height="56"></picture>
+      <span class="brand-sub"><span class="sports-word">Studio</span><span class="tagline">Posts and reels from today's stories</span></span>
+    </a>
+    <div class="refresh"><button id="refreshBtn" class="btn" type="button">↻ Refresh</button></div>
+  </header>
+
+  <nav class="brand-tabs" id="brandTabs">
+    <button data-brand="tsb" class="active">The Sports Binge</button>
+    <button data-brand="musc">MUSC Red Devils</button>
+  </nav>
+
+  <main class="studio-main">
+    <p id="studioHint" class="hint">Today's best stories for this page, already written and drawn. Approve what you'd post; tell it what you wouldn't.</p>
+    <div id="packs" class="packs"><div class="skeleton"></div><div class="skeleton"></div></div>
+  </main>
+
+  <dialog id="packDialog" class="pack-dialog">
+    <form method="dialog" class="dialog-head"><h3 id="packTitle">Post</h3><button class="icon-btn" aria-label="Close">✕</button></form>
+    <div class="pack-body">
+      <div class="pack-preview"><img id="packImg" alt="Poster preview"></div>
+      <div class="pack-fields">
+        <div class="seg" id="sizeSeg"><button data-size="post" class="active">Post 4:5</button><button data-size="story">Story 9:16</button><button data-size="square">Square</button></div>
+        <div class="seg" id="tplSeg"></div>
+        <label>Headline<input id="fHeadline"></label>
+        <label>Caption<textarea id="fCaption" rows="7"></textarea></label>
+        <div class="pack-actions">
+          <button id="copyCaption" class="btn" type="button">⧉ Copy caption</button>
+          <a id="download" class="btn ghost" download>⬇ Download PNG</a>
+          <button id="reject" class="btn ghost" type="button">✗ Not this</button>
+        </div>
+        <p id="packMeta" class="muted"></p>
+      </div>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>
