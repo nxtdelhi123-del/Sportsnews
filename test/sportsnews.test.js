@@ -732,3 +732,81 @@ test('studio: the same medal from two outlets is one candidate; the tally poster
   assert.equal(template, 'tsb-tally');
   assert.ok(png.length > 20_000);
 });
+
+// ---- Studio: the look (cut-outs, photo links, edits, tiers, kickers) ----
+import { cleanWords } from '../api/studio/render.js';
+import { splitTiers } from '../lib/studio/templates.js';
+import { kickerOf } from '../lib/studio/writer.js';
+import { codeOf, flagUrl } from '../lib/studio/flags.js';
+import { withGrain } from '../lib/studio/render.js';
+
+test('studio: headlines split into a name tier and a metal tier; kickers pick the striking fact', () => {
+  assert.deepEqual(splitTiers({ headline: 'PARUL CHAUDHARY BRONZE.', accent: 'bronze', accentWords: ['bronze'] }, 'medal'), { top: 'PARUL CHAUDHARY', big: 'BRONZE.', metal: 'bronze' });
+  assert.deepEqual(splitTiers({ headline: '56 YEARS LATER.', accent: 'silver', accentWords: ['later'] }, 'medal'), { top: '56 YEARS', big: 'LATER.', metal: 'silver' });
+  assert.equal(splitTiers({ headline: '15,000 ODI RUNS.', accent: 'gold', accentWords: ['15,000'] }, 'milestone'), null, 'the accent is not the last word');
+  assert.equal(splitTiers({ headline: 'Spain take Wembley.', accent: 'gold', accentWords: ['take'] }, 'result'), null);
+  assert.equal(kickerOf("Sawan Barwal wins marathon silver in 2:11:37, India's first men's marathon medal in 44 years", 'A new national record.', '44 YEARS LATER.'), "INDIA'S FIRST MEN'S MARATHON MEDAL IN 44 YEARS");
+  assert.equal(kickerOf('Parul Chaudhary wins bronze', 'She clocked 15:14.61 in Aichi-Nagoya. Her second medal of these Games.', 'PARUL CHAUDHARY BRONZE.', ['15:14.61']), '', 'a bare number already in the stats is not a kicker');
+  assert.equal(kickerOf('Kohli fastest to 15,000 ODI runs', 'Only two have been here. He got there in 303 innings.', '15,000 ODI RUNS.'), 'ONLY TWO HAVE BEEN HERE');
+  assert.equal(codeOf('India'), 'in');
+  assert.equal(codeOf('England'), 'gb-eng');
+  assert.equal(codeOf('Visitors 3'), '');
+  assert.equal(flagUrl('Spain'), 'https://flagcdn.com/w320/es.png');
+  const svg = withGrain('<svg width="10" height="10" xmlns="http://www.w3.org/2000/svg"><rect/></svg>', 10, 10, 'tsb-dark');
+  assert.match(svg, /<pattern id="nxt-grain"[\s\S]*<\/svg>$/);
+});
+
+test('studio: the desk’s edits are whitelisted and bounded', () => {
+  assert.equal(cleanWords(null), null);
+  assert.equal(cleanWords({ by: 'claude', caption: 'x' }), null, 'fields the poster does not draw are dropped');
+  const w = cleanWords({ headline: ' INDIA GOLD. ', name: "WOMEN'S 4×400M RELAY", kicker: 'x'.repeat(400), stats: [{ value: '3:29.69', label: 'Time' }, { value: '', label: 'nothing' }, { value: 'a', label: 'b' }, { value: 'c', label: 'd' }, { value: 'e', label: 'f' }], accentWords: ['gold'], accent: 'purple', evil: '<script>' });
+  assert.equal(w.headline, 'INDIA GOLD.');
+  assert.equal(w.kicker.length, 120);
+  assert.deepEqual(w.stats.map((s) => s.value), ['3:29.69', 'a', 'c']);
+  assert.deepEqual(w.accentWords, ['gold']);
+  assert.equal(w.accent, undefined);
+  assert.equal(w.evil, undefined);
+});
+
+test('studio: render accepts a cut-out, a photo link and word edits; refuses bad ones', async () => {
+  mockFetchGlobal();
+  const { default: render } = await import('../api/studio/render.js?look');
+  const px = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR4nGP4z8DwHwyBNAMDAC+YA/0h2fHCAAAAAElFTkSuQmCC';
+  let res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', hero: px, cutout: px, cutoutAspect: 0.8, template: 'tsb-dark', w: 360, words: { headline: 'ARSENAL GOLD.', kicker: 'A KICKER', stats: [{ value: '2–1', label: 'Final score' }] } }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 200, res.body?.toString?.().slice(0, 200));
+  assert.equal(res.headers['content-type'], 'image/png');
+  assert.equal(res.headers['cache-control'], 'no-store', 'own photos and edits are never cached');
+  res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', cutout: 'data:text/html;base64,QUJD' }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 400);
+  res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', heroUrl: 'ftp://nope' }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(res.statusCode, 400);
+  res = mockRes();
+  await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', json: 1, words: { headline: 'EDITED.' } }, query: {}, headers: { host: 'x' } }, res);
+  assert.equal(JSON.parse(res.body).words.headline, 'EDITED.');
+});
+
+test('studio: the photo proxy fetches pictures only, from public hosts only', async () => {
+  const { default: photo } = await import('../api/studio/photo.js');
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u) => {
+    const s = String(u);
+    if (s.includes('pic.jpg')) return new Response(Buffer.from('ffd8ffe0', 'hex'), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    return new Response('<html>', { status: 200, headers: { 'content-type': 'text/html' } });
+  };
+  try {
+    let res = mockRes();
+    await photo({ query: { url: 'https://example.com/pic.jpg' }, headers: {} }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.headers['content-type'], 'image/jpeg');
+    for (const url of ['https://example.com/page', 'http://localhost/pic.jpg', 'http://192.168.1.4/pic.jpg', 'file:///etc/passwd', 'not a link']) {
+      res = mockRes();
+      await photo({ query: { url }, headers: {} }, res);
+      assert.ok(res.statusCode >= 400, `${url} → ${res.statusCode}`);
+    }
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
