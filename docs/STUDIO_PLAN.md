@@ -118,6 +118,54 @@ public/studio/*.js|css
   `IG_MUSC_USER_ID`, `IG_MUSC_TOKEN`, `BLOB_READ_WRITE_TOKEN`, `KV_*`,
   `STUDIO_PASSWORD` (the review desk is private).
 
+## 2.5 Grid calibration — @thesportsbinge, 18 Oct 2026
+
+Counted from five grid screenshots (54 posts, late Sept to mid Oct 2026):
+
+| What the page posts | Posts | Share |
+| --- | --- | --- |
+| Indian medals at the Asian Games (athletics 14, shooting 4, squash 4, kabaddi 3, relays 3, javelin 2, TT, boxing, kurash, archery) | 34 | 63% |
+| Medal tallies (INDIA MEDAL COUNT 23 / 37 / 45) | 3 | 6% |
+| Football: Nations League results (cream), Man City verdict (dark, red) | 6 | 11% |
+| Cricket: Kohli 15,000 ODI runs, Kohli quote, WPL retentions, Asian Games rain-out | 4 | 7% |
+| F1: Russell pole, Russell win | 2 | 4% |
+| Chess: Olympiad three-peat, 11-year-old WGM | 2 | 4% |
+| Hockey: India vs Pakistan semi-final preview | 1 | 2% |
+| NBA, NFL, MLB, NHL, golf, tennis, UFC | 0 | 0% |
+
+What that changed in the code (PR "Studio: learn the Sports Binge grid"):
+
+- **Ranking** (`lib/studio/brands/tsb.js`): athletics 1.8, cricket 1.6, shooting /
+  archery / wrestling / kabaddi 1.5, squash / badminton / hockey / chess 1.4; NBA 0.4,
+  NFL / MLB / NHL 0.2. Boosts: India ×2.0, Asian Games ×1.6, any medal ×1.6, records /
+  firsts / "N years later" ×1.5, double podiums ×1.3, 60 Indian athletes by name ×1.6,
+  India–Pakistan ×1.6, verdicts and bans ×1.4, retentions and auctions ×1.3. Never:
+  how-to-watch, live blogs, rumours, fantasy tips, youth sides.
+- **Post types** (`lib/studio/score.js`): `stage` (into the final, medal assured) and a
+  wider `tally` detector, on top of medal / milestone / quote / breaking.
+- **Headline formulas** (`lib/studio/writer.js`), copied from the grid:
+  `PARUL CHAUDHARY BRONZE.`, `INDIA GOLD.`, `BRONZE.` + "MANUSH SHAH & DIYA CHITALE",
+  `DOUBLE PODIUM.`, `56 YEARS LATER.`, `42 YEARS. THE RECORD FINALLY FALLS.`,
+  `INDIA’S FIRST EVER.`, `A NATIONAL RECORD. ANOTHER ASIAN MEDAL.`, `15,000 ODI RUNS.`,
+  `11 YEARS OLD. HISTORY MADE.`, `698/720. ASIAN GAMES RECORD.`, `INTO THE FINAL.`,
+  `MEDAL ASSURED.`, `INDIA MEDAL COUNT.`, quotes in curly quotes, breaking news in caps
+  cut before the first preposition (`MANCHESTER CITY FOUND GUILTY.`).
+- **Name line and stats** on the dark poster: event (`WOMEN'S 5000M`), athlete names
+  when the headline is only the metal, the time / distance / score, `NR` / `GR` / `WR`.
+- **Eyebrows and hashtags** by competition: `ASIAN GAMES · AICHI-NAGOYA 2026`,
+  `UEFA NATIONS LEAGUE`, `TATA WPL`, `AZERBAIJAN GRAND PRIX` …
+- **`tsb-tally`** template (§4.3): giant total, gold / silver / bronze coins, rank.
+- **Newsroom**: shooting, archery, squash, wrestling, weightlifting and swimming are
+  sports of their own; "India vs Pakistan hockey" is field hockey; medals and the
+  Asian Games count as VIMP; three more Indian feeds (Games medals, Olympic-programme
+  sports, Sportstar).
+- **Dedupe**: the same medal from several outlets is one candidate (athlete + event +
+  metal).
+
+Still manual: the athlete photo (feed image → Wikipedia → "Add photo"), and the
+medal tally only appears when an outlet writes the numbers in a headline (no medal
+table source yet).
+
 ## 3. Phases
 
 ### Phase 1 — Posters from live data (1 session) — DONE 2026-10-18 (PR #12)
@@ -136,7 +184,7 @@ Done when: `/studio` shows today's top 20 stories for each brand, each with a re
    use Hinglish; never invent a fact that is not in the match data; numbers verbatim.
 5. Templates: `tsb-cream` (result with flags and score: the "Spain take Wembley."
    layout), `tsb-dark` (headline on hero photo with metallic accent),
-   `tsb-tally` (stat strip), `musc-result`, `musc-matchday` (VS, date/time IST,
+   `tsb-tally` (medal count, done 18 Oct), `musc-result`, `musc-matchday` (VS, date/time IST,
    FanCode line), `musc-xi` (pitch with names). Each takes a pack and a size.
 6. `api/studio/render.js` with `@vercel/og`; cache by pack hash.
 7. `public/studio.html`: brand tabs, list of candidates, poster preview, caption box,

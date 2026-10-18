@@ -577,8 +577,9 @@ test('studio: formula words follow the brand voice', () => {
   assert.ok(mw.hashtags.includes('#MUFC'));
   assert.equal(writeFormula({ ...utd, away: { ...utd.away, score: '0', winner: false }, home: { ...utd.home, score: '3', winner: true } }, 'result', BRANDS.musc).headline, 'A NIGHT TO FORGET VS LIV.');
   const news = writeFormula({ kind: 'news', title: 'Virat Kohli becomes fastest to 15,000 ODI runs: the numbers', summary: 'x', sport: 'cricket', source: 'ESPNcricinfo' }, 'milestone', BRANDS.tsb);
-  assert.equal(news.headline, 'Virat Kohli becomes fastest to 15,000.');
+  assert.equal(news.headline, '15,000 ODI RUNS.');
   assert.deepEqual(news.accentWords, ['15,000']);
+  assert.equal(news.name, 'VIRAT KOHLI');
 });
 
 test('studio: every template renders a PNG', async () => {
@@ -643,4 +644,91 @@ test('studio: a photo sent with the request becomes the poster background', asyn
   await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', hero, template: 'tsb-dark', w: 360 }, query: {}, headers: { host: 'x' } }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.headers['content-type'], 'image/png');
+});
+
+// ---- Studio: calibrated against @thesportsbinge's grid ----
+import { competitionOf, eventOf, markOf } from '../lib/studio/writer.js';
+import { dupKey } from '../lib/studio/packs.js';
+
+const NOWG = Date.parse('2026-10-18T10:00:00Z');
+const headline = (title, sport = 'athletics', summary = '') => ({ kind: 'news', id: title.slice(0, 24), title, summary, sport, source: 'The Hindu', published: new Date(NOWG - 3600e3).toISOString(), tier: 'vimp' });
+
+test('Olympic-programme sports get their own labels; India–Pakistan hockey is not ice hockey', () => {
+  assert.equal(classify('India vs Pakistan hockey semi-final set for October 1 at Asian Games'), 'fieldhockey');
+  assert.equal(classify('Maple Leafs beat Bruins in overtime hockey thriller'), 'hockey');
+  assert.equal(classify('Esha Singh wins silver in women\'s 25m pistol after five shoot-offs'), 'shooting');
+  assert.equal(classify('Curry\'s shooting carries Warriors past Lakers'), 'basketball');
+  assert.equal(classify('Dhiraj Bommadevara tops men\'s recurve qualification'), 'archery');
+  assert.equal(classify('Anahat Singh storms into Asian Games squash final'), 'squash');
+  assert.equal(classify('Vithya Ramraj breaks national record in 400m hurdles'), 'athletics');
+  assert.equal(classify('Pincky Balhara wins kurash bronze'), 'wrestling');
+  assert.equal(classify('WWE Raw results: Cody Rhodes retains'), 'combat');
+  assert.equal(newsTier({ sport: 'athletics', title: 'Parul Chaudhary wins bronze in women\'s 5000m at Asian Games' }), 'vimp');
+});
+
+test('studio: TSB ranks an Indian medal above a Nations League thriller, and both above the NBA', () => {
+  const medal = headline('Gulveer Singh wins silver in men\'s 10,000m at Asian Games');
+  const nations = headline('Spain beat England 3-2 at Wembley in Nations League thriller', 'soccer');
+  const nba = { ...headline('Lakers beat Warriors as LeBron scores 40', 'basketball'), tier: 'imp' };
+  const a = scoreStory(medal, BRANDS.tsb, NOWG).score;
+  const b = scoreStory(nations, BRANDS.tsb, NOWG).score;
+  const c = scoreStory(nba, BRANDS.tsb, NOWG).score;
+  assert.ok(a > b && b > c, `${a} > ${b} > ${c}`);
+  assert.ok(b >= BRANDS.tsb.threshold, 'a big European result still gets drafted');
+  assert.ok(c < BRANDS.tsb.threshold, 'the NBA does not');
+  assert.equal(scoreStory(headline('How to watch Asian Games live streaming in India', 'other'), BRANDS.tsb, NOWG).score, 0, 'how-to-watch pieces are never posts');
+  assert.equal(postType(headline('Anahat Singh storms into Asian Games women\'s singles final', 'squash'), BRANDS.tsb), 'stage');
+  assert.equal(postType(headline('Anahat Singh wins silver after reaching the final', 'squash'), BRANDS.tsb), 'medal');
+  assert.equal(postType(headline('India\'s medal count at Asian Games rises to 45', 'other'), BRANDS.tsb), 'tally');
+});
+
+test('studio: medal, record and tally headlines follow the grid', () => {
+  const W = (title, type, sport = 'athletics', summary = '') => writeFormula(headline(title, sport, summary), type, BRANDS.tsb, NOWG);
+  let w = W('Asian Games 2026: Parul Chaudhary wins bronze in women\'s 5000m with a national record', 'medal', 'athletics', 'She clocked 15:14.61.');
+  assert.equal(w.headline, 'PARUL CHAUDHARY BRONZE.');
+  assert.equal(w.name, "WOMEN'S 5000M");
+  assert.equal(w.eyebrow, 'ASIAN GAMES · AICHI-NAGOYA 2026');
+  assert.deepEqual(w.stats.map((x) => x.value), ['15:14.61', 'NR']);
+  assert.equal(w.accent, 'bronze');
+  assert.ok(w.hashtags.includes('#AsianGames2026'));
+  assert.equal(W('India win gold in women\'s 4x400m relay at Asian Games 2026', 'medal').headline, 'INDIA GOLD.');
+  assert.equal(W('Yashvir Singh takes silver and Rohit Yadav bronze as India\'s javelin duo deliver', 'medal').headline, 'DOUBLE PODIUM.');
+  w = W('Manush Shah and Diya Chitale win bronze in mixed doubles table tennis', 'medal', 'tabletennis');
+  assert.equal(w.headline, 'BRONZE.');
+  assert.equal(w.name, 'MANUSH SHAH & DIYA CHITALE · MIXED DOUBLES TABLE TENNIS');
+  assert.equal(W('Sarvesh Kushare wins high jump silver, India\'s first high jump medal in 56 years', 'medal').headline, '56 YEARS LATER.');
+  assert.equal(W('Vithya Ramraj breaks 42-year-old national record in 400m hurdles, wins bronze', 'medal').headline, '42 YEARS. THE RECORD FINALLY FALLS.');
+  assert.equal(W('Baranica wins pole vault bronze, India\'s first-ever Asian Games medal in the event', 'medal').headline, 'INDIA’S FIRST EVER.');
+  assert.equal(W('India beat Iran 39-35 to win men\'s kabaddi gold at Asian Games', 'medal', 'kabaddi').stats[0].value, '39–35');
+  assert.equal(W('11-year-old Bodhana Sivanandan becomes youngest ever woman grandmaster', 'milestone', 'chess').headline, '11 YEARS OLD. HISTORY MADE.');
+  assert.equal(W('Dhiraj Bommadevara sets Asian Games record with 698/720 in men\'s recurve qualification', 'milestone', 'archery').headline, '698/720. ASIAN GAMES RECORD.');
+  assert.equal(W('Anahat Singh storms into Asian Games women\'s singles final', 'stage', 'squash', 'Fights back from 0-2 down to beat Satomi Watanabe 3-2.').headline, 'INTO THE FINAL.');
+  assert.equal(W('Anahat Singh reaches semi-finals, assures India of a squash medal', 'stage', 'squash').headline, 'MEDAL ASSURED.');
+  w = W('India\'s medal count at Asian Games rises to 45: 4 gold, 20 silver, 21 bronze, 12th in the medal table', 'tally', 'other');
+  assert.equal(w.headline, 'INDIA MEDAL COUNT.');
+  assert.equal(w.big, 45);
+  assert.deepEqual(w.stats.map((x) => x.value), ['4', '20', '21', '12th']);
+  w = W('Virat Kohli: "For me, it\'s the last World Cup I\'m going to play for India"', 'quote', 'cricket');
+  assert.equal(w.headline, '“For me, it\'s the last World Cup I\'m going to play for India”');
+  assert.equal(w.name, 'VIRAT KOHLI');
+  assert.equal(W('Manchester City found guilty on almost all Premier League financial charges', 'breaking', 'soccer').headline, 'MANCHESTER CITY FOUND GUILTY.');
+  assert.equal(W('Russell takes pole at Azerbaijan Grand Prix, Antonelli crashes out in Q1', 'breaking', 'racing').eyebrow, 'AZERBAIJAN GRAND PRIX');
+  assert.equal(W('India vs Sri Lanka: Asian Games cricket semi-final preview', 'breaking', 'cricket').headline, 'INDIA VS SRI LANKA.');
+  assert.equal(eventOf("Men's 50m rifle 3 positions team event silver"), "MEN'S 50M RIFLE 3 POSITIONS TEAM");
+  assert.deepEqual(markOf('Sawan Barwal ran 2:11:37, a national record'), { value: '2:11:37', label: 'Time' });
+  assert.equal(competitionOf('WPL 2027 retentions confirmed').eyebrow, 'TATA WPL');
+});
+
+test('studio: the same medal from two outlets is one candidate; the tally poster renders', async () => {
+  const a = headline('Gulveer Singh wins silver in men\'s 10,000m at Asian Games');
+  const b = headline('Asian Games: Gulveer Singh takes 10,000m silver for India');
+  assert.equal(dupKey(a, 'medal'), dupKey(b, 'medal'));
+  assert.notEqual(dupKey(a, 'medal'), dupKey(headline('Gulveer Singh wins silver in men\'s 1500m at Asian Games'), 'medal'));
+  const story = headline('India\'s medal count at Asian Games rises to 45: 4 gold, 20 silver, 21 bronze', 'other');
+  const words = writeFormula(story, 'tally', BRANDS.tsb, NOWG);
+  const pack = { brand: BRANDS.tsb, type: 'tally', words, story, when: {}, assets: {} };
+  assert.equal(pickTemplate(pack), 'tsb-tally');
+  const { png, template } = await renderPack(pack, { size: 'post' });
+  assert.equal(template, 'tsb-tally');
+  assert.ok(png.length > 20_000);
 });
