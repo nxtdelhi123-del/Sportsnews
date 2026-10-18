@@ -306,7 +306,8 @@ function renderNews() {
       <div>
         <a href="${esc(safeUrl(n.link))}" target="_blank" rel="noopener" class="news-title">${esc(n.title)}</a>
         <div class="news-meta">${tierBadge(n.tier)}${sportOf(n.sport).emoji} ${esc(n.source)} · ${esc(timeAgo(n.published))}
-          <button class="link-btn" data-copy-news="${i}" title="Copy headline details for an AI poster">⧉ Copy</button>
+          <button class="link-btn" data-copy-news="${i}" title="Copy the details and a Sports Binge AI prompt">⧉ Copy</button>
+          ${n.sport === 'soccer' ? `<button class="link-btn" data-copy-news="${i}" data-brand="musc" title="Copy the details and a MUSC AI prompt">⧉ MUSC</button>` : ''}
           <a class="link-btn" href="/studio?brand=tsb&key=${esc(encodeURIComponent(`news:${n.id}`))}" title="Make the Instagram post in the Studio">🎨 Post</a></div>
       </div>
     </article>`,
@@ -515,8 +516,8 @@ function bind() {
     if (!b) return;
     const n = state.newsVisible?.[Number(b.dataset.copyNews)];
     if (!n) return;
-    const ok = await writeClipboard(newsPoster(n, fmtOpts()));
-    toast(ok ? 'Headline details copied — paste it into your AI' : 'Copy failed');
+    const ok = await writeClipboard(newsPoster(n, { ...fmtOpts(), brand: b.dataset.brand || 'tsb' }));
+    toast(ok ? 'Copied — paste it into your image AI with the real photo attached' : 'Copy failed');
   });
 
   $('#copyAll').addEventListener('click', async () => {
