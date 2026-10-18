@@ -42,7 +42,7 @@
     <div class="pack-body">
       <div class="pack-preview"><img id="packImg" alt="Poster preview"></div>
       <div class="pack-fields">
-        <div class="seg" id="sizeSeg"><button data-size="post" class="active">Post 4:5</button><button data-size="story">Story 9:16</button><button data-size="square">Square</button></div>
+        <div class="seg" id="sizeSeg"><button data-size="tall" class="active">Post 3:4</button><button data-size="post">4:5</button><button data-size="story">Story 9:16</button><button data-size="square">Square</button></div>
         <div class="seg" id="tplSeg"></div>
         <div class="fields-grid">
           <label>Headline<input id="fHeadline" autocomplete="off"></label>
@@ -56,6 +56,15 @@
           <input id="photoUrl" type="url" placeholder="…or paste a picture link" autocomplete="off">
           <button id="photoGo" class="btn ghost" type="button">Fetch</button>
           <label class="check" title="Cut the athlete out and stand them in front of the headline"><input id="cutoutOn" type="checkbox"> Athlete in front</label>
+        </div>
+        <div class="nudge" id="nudge" hidden>
+          <span class="muted small">Photo: drag the poster, or</span>
+          <button type="button" class="btn ghost small" data-nudge="-0.04,0" aria-label="Move photo left">◀</button>
+          <button type="button" class="btn ghost small" data-nudge="0.04,0" aria-label="Move photo right">▶</button>
+          <button type="button" class="btn ghost small" data-nudge="0,-0.04" aria-label="Move photo up">▲</button>
+          <button type="button" class="btn ghost small" data-nudge="0,0.04" aria-label="Move photo down">▼</button>
+          <label class="zoom">Zoom <input id="zoom" type="range" min="1" max="2.5" step="0.05" value="1"></label>
+          <button type="button" class="btn ghost small" id="nudgeReset">Reset</button>
         </div>
         <label>Caption<textarea id="fCaption" rows="6"></textarea></label>
         <div class="pack-actions">

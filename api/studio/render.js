@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     pasted = cleanStory(body.story);
     if (!pasted) return sendJSON(res, 400, { error: 'That story is missing a headline or the two teams' });
   }
-  const { brand = 'tsb', size = 'post', template, json, w } = { ...(req.query || {}), ...body };
+  const { brand = 'tsb', size = 'tall', template, json, w } = { ...(req.query || {}), ...body };
   const key = pasted ? (pasted.kind === 'news' ? 'news:pasted' : 'match:pasted:pasted') : String(body.key ?? req.query?.key ?? '');
   const width = Math.min(1080, Math.max(270, Number(w) || 1080));
   if (!BRANDS[brand]) return sendJSON(res, 400, { error: 'Unknown brand' });

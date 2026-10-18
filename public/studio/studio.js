@@ -1,13 +1,14 @@
 import { findSubject, findText, cropHero, cutoutOf, cleanBand, withoutText } from '/studio/cutout.js';
 
-const ASPECT = { post: 1080 / 1350, story: 1080 / 1920, square: 1 };
+const ASPECT = { tall: 1080 / 1440, post: 1080 / 1350, story: 1080 / 1920, square: 1 };
 
 const $ = (s) => document.querySelector(s);
 const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const TEMPLATES = { tsb: ['tsb-dark', 'tsb-cream'], musc: ['musc-result', 'musc-matchday'] };
-const state = { brand: localStorage.getItem('studio:brand') || 'tsb', packs: [], current: null, size: 'post', template: null, photo: null, src: null, rejected: new Set(JSON.parse(localStorage.getItem('studio:rejected') || '[]')), cutout: localStorage.getItem('studio:cutout') === 'on' };
+const TEMPLATES = { tsb: ['tsb-medal-top', 'tsb-medal-bottom', 'tsb-phrase', 'tsb-number', 'tsb-cream'], musc: ['musc-head', 'musc-head-left', 'musc-head-slant', 'musc-result', 'musc-matchday'] };
+const TPL_NAMES = { 'tsb-medal-top': 'Name on top', 'tsb-medal-bottom': 'Metal at foot', 'tsb-phrase': 'Phrase', 'tsb-number': 'Number', 'tsb-quote': 'Quote', 'tsb-cream': 'Cream result', 'tsb-result-photo': 'Photo result', 'tsb-preview': 'Preview', 'tsb-vs': 'Cream VS', 'tsb-tally': 'Tally', 'tsb-verdict': 'Breaking', 'tsb-cover': 'Cover', 'tsb-dark': 'Dark', 'musc-head': 'Centre', 'musc-head-left': 'Left', 'musc-head-slant': 'Slant', 'musc-matchday': 'Matchday', 'musc-result': 'Result', 'musc-statement': 'Statement', 'musc-signing': 'Signing' };
+const state = { brand: localStorage.getItem('studio:brand') || 'tsb', packs: [], current: null, size: 'tall', template: null, photo: null, src: null, rejected: new Set(JSON.parse(localStorage.getItem('studio:rejected') || '[]')), cutout: localStorage.getItem('studio:cutout') === 'on' };
 
-const renderUrl = (p, size = 'post', template = null, w = 0) => `/api/studio/render?brand=${state.brand}&key=${encodeURIComponent(p.key)}&size=${size}${template ? '&template=' + template : ''}${w ? '&w=' + w : ''}`;
+const renderUrl = (p, size = 'tall', template = null, w = 0) => `/api/studio/render?brand=${state.brand}&key=${encodeURIComponent(p.key)}&size=${size}${template ? '&template=' + template : ''}${w ? '&w=' + w : ''}`;
 // Stories pasted by the owner are not in the newsroom: every render carries the story itself.
 const custom = (p) => (p?.story?.source === 'pasted' ? { story: p.story } : {});
 
@@ -103,7 +104,9 @@ async function openPack(p) {
   $('#packTitle').textContent = p.story.name || p.story.title || 'Post';
   fillFields(p.words);
   $('#packMeta').textContent = `${p.type} · score ${p.score} · ${p.reason || ''} · words by ${p.words.by || 'formula'}`;
-  $('#tplSeg').innerHTML = [...TEMPLATES[state.brand], ...(p.type === 'tally' && state.brand === 'tsb' ? ['tsb-tally'] : [])].map((t) => `<button data-tpl="${t}" class="${t === p.template ? 'active' : ''}">${t.replace(/^\w+-/, '')}</button>`).join('');
+  $('#tplSeg').innerHTML = (p.templates?.length ? p.templates : TEMPLATES[state.brand]).map((t) => `<button data-tpl="${t}" class="${t === p.template ? 'active' : ''}">${esc(TPL_NAMES[t] || t.replace(/^\w+-/, ''))}</button>`).join('');
+  $('#nudge').hidden = true;
+  $('#zoom').value = 1;
   document.querySelectorAll('#sizeSeg button').forEach((b) => b.classList.toggle('active', b.dataset.size === state.size));
   $('#cutoutOn').checked = state.cutout;
   updatePreview();
@@ -210,7 +213,8 @@ function buildPhoto() {
     }
   }
   const forced = cutOn && !$('#cutoutOn').checked;
-  const { hero, subjectY } = cropHero(image, subject, aspect, { blur: cutOn ? (forced ? 48 : 30) : 0, dim: forced ? 0.36 : 0.72, band: cutOn ? null : band });
+  const { hero, subjectY } = cropHero(image, subject, aspect, { blur: cutOn ? (forced ? 48 : 30) : 0, dim: forced ? 0.36 : 0.72, band: cutOn ? null : band, nudge: cutOn ? null : state.src.nudge });
+  $('#nudge').hidden = !!cutOn;
   const layout = !cutOn && subject?.box && subjectY > 0.58 ? 'top' : 'bottom';
   state.photo = { hero, layout };
   if (cutOn) {
@@ -230,7 +234,8 @@ async function usePhoto(src) {
   if (!state.template || !/dark|result/.test(state.template)) state.template = state.brand === 'tsb' ? 'tsb-dark' : 'musc-result';
   document.querySelectorAll('#tplSeg button').forEach((x) => x.classList.toggle('active', x.dataset.tpl === state.template));
   // Draw at once with a centred crop; then find the athlete and any printed text, and draw again around them.
-  state.src = { image: im, subject: null, text: null };
+  state.src = { image: im, subject: null, text: null, nudge: { zoom: 1, dx: 0, dy: 0 } };
+  $('#zoom').value = 1;
   buildPhoto();
   updatePreview();
   try {
@@ -320,6 +325,52 @@ $('#tplSeg').addEventListener('click', (e) => {
   updatePreview();
 });
 $('#redraw').addEventListener('click', updatePreview);
+
+// Move the photo: drag the preview (or use the arrows), zoom with the slider.
+let redrawTimer;
+const redrawSoon = () => {
+  clearTimeout(redrawTimer);
+  redrawTimer = setTimeout(() => {
+    buildPhoto();
+    updatePreview();
+  }, 180);
+};
+const nudgeBy = (dx, dy) => {
+  if (!state.src) return toast('Add a photo first');
+  state.src.nudge.dx += dx;
+  state.src.nudge.dy += dy;
+  redrawSoon();
+};
+let drag = null;
+$('#packImg').addEventListener('pointerdown', (e) => {
+  if (!state.src || $('#nudge').hidden) return;
+  drag = { x: e.clientX, y: e.clientY, w: e.currentTarget.clientWidth, h: e.currentTarget.clientHeight };
+  e.currentTarget.setPointerCapture(e.pointerId);
+});
+$('#packImg').addEventListener('pointerup', (e) => {
+  if (!drag) return;
+  const dx = (e.clientX - drag.x) / drag.w;
+  const dy = (e.clientY - drag.y) / drag.h;
+  drag = null;
+  if (Math.abs(dx) + Math.abs(dy) > 0.01) nudgeBy(dx, dy);
+});
+$('#zoom').addEventListener('input', (e) => {
+  if (!state.src) return;
+  state.src.nudge.zoom = Number(e.target.value);
+  redrawSoon();
+});
+document.querySelectorAll('#nudge [data-nudge]').forEach((b) =>
+  b.addEventListener('click', () => {
+    const [dx, dy] = b.dataset.nudge.split(',').map(Number);
+    nudgeBy(dx, dy);
+  }),
+);
+$('#nudgeReset').addEventListener('click', () => {
+  if (!state.src) return;
+  state.src.nudge = { zoom: 1, dx: 0, dy: 0 };
+  $('#zoom').value = 1;
+  redrawSoon();
+});
 for (const id of ['#fHeadline', '#fName', '#fKicker', '#fStats']) $(id).addEventListener('keydown', (e) => e.key === 'Enter' && (e.preventDefault(), updatePreview()));
 $('#share').addEventListener('click', share);
 $('#photoIn').addEventListener('change', (e) => e.target.files[0] && usePhoto(URL.createObjectURL(e.target.files[0])));

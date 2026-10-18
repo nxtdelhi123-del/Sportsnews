@@ -746,7 +746,8 @@ test('studio: headlines split into a name tier and a metal tier; kickers pick th
   assert.equal(splitTiers({ headline: '15,000 ODI RUNS.', accent: 'gold', accentWords: ['15,000'] }, 'milestone'), null, 'the accent is not the last word');
   assert.equal(splitTiers({ headline: 'Spain take Wembley.', accent: 'gold', accentWords: ['take'] }, 'result'), null);
   assert.equal(kickerOf("Sawan Barwal wins marathon silver in 2:11:37, India's first men's marathon medal in 44 years", 'A new national record.', '44 YEARS LATER.'), "INDIA'S FIRST MEN'S MARATHON MEDAL IN 44 YEARS");
-  assert.equal(kickerOf('Parul Chaudhary wins bronze', 'She clocked 15:14.61 in Aichi-Nagoya. Her second medal of these Games.', 'PARUL CHAUDHARY BRONZE.', ['15:14.61']), '', 'a bare number already in the stats is not a kicker');
+  assert.equal(kickerOf('Parul Chaudhary wins bronze', 'She clocked 15:14.61 in Aichi-Nagoya.', 'PARUL CHAUDHARY BRONZE.', ['15:14.61']), '', 'a bare number already in the stats is not a kicker');
+  assert.equal(kickerOf('Parul Chaudhary wins bronze', 'She clocked 15:14.61 in Aichi-Nagoya. Her second medal of these Games.', 'PARUL CHAUDHARY BRONZE.', ['15:14.61']), 'HER SECOND MEDAL OF THESE GAMES');
   assert.equal(kickerOf('Kohli fastest to 15,000 ODI runs', 'Only two have been here. He got there in 303 innings.', '15,000 ODI RUNS.'), 'ONLY TWO HAVE BEEN HERE');
   assert.equal(codeOf('India'), 'in');
   assert.equal(codeOf('England'), 'gb-eng');
@@ -890,4 +891,45 @@ test('studio: the headline moves to the top when the desk says the athlete is lo
   const res = mockRes();
   await render({ method: 'POST', body: { brand: 'tsb', key: 'match:soccer/eng.1:740001', layout: 'top', json: 1 }, query: {}, headers: { host: 'x' } }, res);
   assert.equal(JSON.parse(res.body).layout, 'top');
+});
+
+
+// ---- Studio: the type engine and the page-matched templates ----
+import { measure, fitSize, breakLines, setText, linesFor } from '../lib/studio/type.js';
+import { templateOptions } from '../lib/studio/templates.js';
+
+test('studio: type fills its measure and breaks lines like an editor', () => {
+  const size = fitSize('BRONZE', 'cond', 1000);
+  const w = measure('BRONZE', 'cond', size);
+  assert.ok(w <= 1000 && w > 970, `BRONZE at ${size}px is ${w}px wide`);
+  assert.deepEqual(setText('TWO FINALS. TWO SILVERS.', 'cond', 960, { max: 220, maxLines: 2 }).lines, ['TWO FINALS.', 'TWO SILVERS.'], 'breaks after a full stop');
+  assert.deepEqual(setText('Wembley gets a heavyweight opener.', 'semi', 900, { max: 160, maxLines: 2 }).lines, ['Wembley gets a', 'heavyweight opener.']);
+  assert.equal(breakLines('ONE TWO THREE FOUR FIVE SIX', 'cond', 400, 300, { maxLines: 2 }), null, 'no layout is reported, not faked');
+  assert.ok(linesFor('MAN CITY FOUND GUILTY ON ALMOST ALL PREMIER LEAGUE FINANCIAL CHARGES', 'didone', 108, 970, { maxLines: 5 }).length <= 5);
+});
+
+test('studio: every kind has its own layout, with alternatives on the desk', async () => {
+  const b = { tsb: BRANDS.tsb, musc: BRANDS.musc };
+  const n = (title, type, words = {}) => ({ brand: b.tsb, type, story: { kind: 'news', title }, words: { headline: title, ...words }, key: title });
+  assert.match(pickTemplate(n('PARUL CHAUDHARY BRONZE.', 'medal', { accent: 'bronze' })), /^tsb-medal-(top|bottom)$/);
+  assert.equal(pickTemplate(n('DOUBLE PODIUM.', 'medal')), 'tsb-phrase');
+  assert.equal(pickTemplate(n('15,000 ODI RUNS.', 'milestone')), 'tsb-number');
+  assert.equal(pickTemplate(n('“For me, it’s the last World Cup”', 'quote')), 'tsb-quote');
+  assert.equal(pickTemplate(n('MANCHESTER CITY FOUND GUILTY.', 'breaking')), 'tsb-verdict');
+  assert.ok(templateOptions(n('INDIA GOLD.', 'medal')).length >= 3, 'the desk offers alternatives');
+  const signing = { brand: b.musc, type: 'breaking', story: { kind: 'news', title: 'Isaac Konde joins Manchester United' }, words: { headline: 'A new Red.' }, key: 'k' };
+  assert.equal(pickTemplate(signing), 'musc-signing');
+  const variety = new Set(['a', 'b', 'c', 'd', 'e', 'f'].map((k) => pickTemplate({ brand: b.musc, type: 'breaking', story: { kind: 'news', title: 'x' }, words: { headline: 'X' }, key: k })));
+  assert.ok(variety.size >= 2, 'neighbouring MUSC news posts do not all share one layout');
+  // every template draws at the page's 3:4 size
+  const esp = { kind: 'match', sport: 'soccer', league: { path: 'x', name: 'UEFA Nations League' }, home: { name: 'England', abbr: 'ENG', score: '2' }, away: { name: 'Spain', abbr: 'ESP', score: '3', winner: true }, status: { state: 'post' }, events: [] };
+  const news = { kind: 'news', id: 'k', title: 'Kohli fastest to 15,000 ODI runs', summary: 'In 303 innings.', sport: 'cricket', source: 'x' };
+  for (const name of Object.keys(TEMPLATES)) {
+    const brand = name.startsWith('musc') ? b.musc : b.tsb;
+    const story = /cream|preview|vs|result|matchday|statement/.test(name) ? esp : news;
+    const type = story === esp ? 'result' : 'milestone';
+    const { png, height } = await renderPack({ brand, type, words: writeFormula(story, type, brand), story, when: { day: 'SAT, 18 OCT', time: '5:00 PM IST' }, assets: {} }, { template: name, width: 270 });
+    assert.equal(height, 1440, name);
+    assert.ok(png.length > 5_000, `${name} drew`);
+  }
 });
