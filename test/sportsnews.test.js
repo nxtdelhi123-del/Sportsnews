@@ -266,17 +266,18 @@ test('AI poster brief has every detail and a ready prompt', () => {
   m.details = summaryDetails(fx.espnSummary, m);
   m.home.color = '#EF0107';
   const p = formatMatch(m, 'poster', { siteUrl: 'https://nxt.example', timeZone: 'Asia/Kolkata' });
-  for (const want of [/SPORT: Football ⚽/, /COMPETITION: Premier League/, /STATUS: LIVE · 67'/, /19:30 GMT\+5:30\s+\|\s+.*14:00 UTC/, /VENUE: Emirates Stadium, London, England \(capacity 60,704\) · attendance 60,123/, /HOME: Arsenal \(ARS\) — 2/, /RESULT: Live: Arsenal lead Chelsea 2–1/, /KEY MOMENTS:\n• 23' Goal — Bukayo Saka/, /Possession: 58% – 42%/, /LINE-UPS:\nArsenal \(4-3-3\): 22 David Raya/, /TEAM COLOURS: Arsenal: #EF0107/, /PROMPT FOR AI/, /LAYOUT — Result over a photo/, /TEAM 1: "Arsenal"/, /@thesportsbinge/]) {
+  for (const want of [/SPORT: Football ⚽/, /COMPETITION: Premier League/, /STATUS: LIVE · 67'/, /19:30 GMT\+5:30\s+\|\s+.*14:00 UTC/, /VENUE: Emirates Stadium, London, England \(capacity 60,704\) · attendance 60,123/, /HOME: Arsenal \(ARS\) — 2/, /RESULT: Live: Arsenal lead Chelsea 2–1/, /KEY MOMENTS:\n• 23' Goal — Bukayo Saka/, /Possession: 58% – 42%/, /LINE-UPS:\nArsenal \(4-3-3\): 22 David Raya/, /TEAM COLOURS: Arsenal: #EF0107/, /PROMPT FOR AI/, /update style/, /LIVE \/ UPDATE/, /SCORE ROW 1: "ARSENAL — 2"/, /ARSENAL — its club crest/, /@thesportsbinge/]) {
     assert.match(p, want);
   }
   const pre = normalizeScoreboard(fx.soccerScoreboard, EPL, NOW)[1];
-  assert.match(formatMatch(pre, 'poster', {}), /RESULT: Upcoming: Liverpool vs Everton[\s\S]*LAYOUT — Match preview/);
+  assert.match(formatMatch(pre, 'poster', {}), /RESULT: Upcoming: Liverpool vs Everton[\s\S]*MATCH \/ PREVIEW/);
+  assert.match(formatMatch(pre, 'prompt-tsb-classic', {}), /LAYOUT — Match preview/);
 });
 
 test('news poster copy', () => {
   const p = newsPoster({ sport: 'cricket', title: 'Kohli hits 50th ODI hundred', summary: 'Record day.', source: 'BBC', link: 'https://x', published: '2026-10-16T10:00:00Z' });
   assert.match(p, /SPORT: Cricket 🏏\nHEADLINE: Kohli hits 50th ODI hundred\nSUMMARY: Record day\./);
-  assert.match(p, /PROMPT FOR AI[\s\S]*LAYOUT — Number[\s\S]*NUMBER: "50TH"[\s\S]*UNIT: "ODI HUNDRED"/);
+  assert.match(p, /PROMPT FOR AI[\s\S]*HEADLINE LINE 1: "KOHLI" — GOLD[\s\S]*HEADLINE LINE 2: "HITS 50TH" — WHITE[\s\S]*CREDIT LINE 1 \(source\): "BBC"/);
 });
 
 function mockFetchGlobal() {
@@ -941,7 +942,7 @@ test('AI prompts carry the page style, the exact words and the anti-AI rules', (
   const n = { kind: 'news', title: "Parul Chaudhary wins bronze in women's 5000m at Asian Games", summary: 'She clocked 15:14.61.', sport: 'athletics' };
   assert.equal(kindOf(n), 'medal');
   assert.equal(headlineFor(n, 'medal'), 'PARUL CHAUDHARY BRONZE.');
-  const p = posterPrompt(n, { brand: 'tsb', words: { name: "WOMEN'S 5000M" } });
+  const p = posterPrompt(n, { brand: 'tsb', style: 'classic', words: { name: "WOMEN'S 5000M" } });
   assert.match(p, /1080×1440/);
   assert.match(p, /TOP LINE: "PARUL CHAUDHARY"/);
   assert.match(p, /BIG WORD: "BRONZE"/);
@@ -959,13 +960,13 @@ test('AI prompts carry the page style, the exact words and the anti-AI rules', (
   assert.match(q, /#DA291C/);
   assert.match(posterPrompt(m, { brand: 'musc', photo: false }), /Do NOT invent the face of a real person/);
   // the newsroom's copy formats include it
-  assert.match(newsPoster({ ...n, source: 'x', link: 'https://x' }), /PROMPT FOR AI[\s\S]*BIG WORD: "BRONZE"/);
+  assert.match(newsPoster({ ...n, source: 'x', link: 'https://x' }), /PROMPT FOR AI[\s\S]*HEADLINE LINE 2: "CHAUDHARY" — GOLD/);
   assert.match(formatMatch(m, 'prompt-musc'), /musc_reddevils/);
 });
 
 test('AI prompts: no-photo layouts say so, scorers sit under their team, fixed words are listed', () => {
   const m = { kind: 'match', date: '2026-10-18T13:00:00Z', status: { state: 'post' }, home: { name: 'Leeds United', abbr: 'LEE', score: '1' }, away: { name: 'Manchester United', abbr: 'MAN', score: '1' }, league: { name: 'Premier League' }, venue: { name: 'Elland Road', city: 'Leeds' }, events: [{ type: 'Goal', player: 'Bryan Mbeumo / Youri Tielemans', minute: "35'", team: 'Manchester United' }, { type: 'Goal - Volley', player: 'Dominic Calvert-Lewin / Tarik Muharemovic', minute: "51'", team: 'Leeds United' }] };
-  const p = posterPrompt(m, { brand: 'tsb' });
+  const p = posterPrompt(m, { brand: 'tsb', style: 'classic' });
   assert.match(p, /This layout uses no photo/);
   assert.doesNotMatch(p, /I am attaching a real photo/);
   assert.doesNotMatch(p, /METAL:/);
@@ -984,7 +985,7 @@ test('AI prompts: no-photo layouts say so, scorers sit under their team, fixed w
 
 test('AI prompts: the shape of the story picks the layout and its real style reference', async () => {
   const { existsSync } = await import('node:fs');
-  const news = (title, summary = '', words) => [{ kind: 'news', title, summary }, words ? { words } : {}];
+  const news = (title, summary = '', words) => [{ kind: 'news', title, summary }, words ? { words, style: 'classic' } : { style: 'classic' }];
   const team = news("India's men's 50m rifle 3P team win silver at Asian Games", 'Aishwary Pratap Singh Tomar, Rudrankksh Patil and Niraj Kumar took silver.');
   assert.equal(styleRef(...team).key, 'team');
   const tp = posterPrompt(...team);
@@ -1008,11 +1009,11 @@ test('AI prompts: the shape of the story picks the layout and its real style ref
   assert.equal(styleRef(...pole).key, 'table');
   assert.match(posterPrompt(...pole), /TABLE ROW: "1:42\.526 — P1 George Russell"/);
   // a layout the owner picked in the Studio wins over the story's shape
-  assert.equal(styleRef(team[0], { template: 'tsb-phrase', pinned: true }).key, 'phrase');
+  assert.equal(styleRef(team[0], { style: 'classic', template: 'tsb-phrase', pinned: true }).key, 'phrase');
   // every layout points at a reference that ships with the site
   for (const brand of ['tsb', 'musc'])
     for (const tpl of ['medal-top', 'medal-bottom', 'phrase', 'number', 'quote', 'cream', 'result-photo', 'preview', 'vs', 'tally', 'verdict', 'cover', 'head', 'head-left', 'head-slant', 'matchday', 'result', 'statement', 'signing']) {
-      const r = styleRef(team[0], { brand, template: `${brand}-${tpl}`, pinned: true });
+      const r = styleRef(team[0], { brand, style: 'classic', template: `${brand}-${tpl}`, pinned: true });
       assert.ok(existsSync(new URL(`../public${new URL(r.url).pathname}`, import.meta.url)), r.url);
       assert.match(r.logos, new RegExp(`/api/studio/logos\\?brand=${brand}`));
     }
@@ -1041,4 +1042,32 @@ test('logo sheet: our logo, the competition emblem and the crests, only from fee
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+test('AI prompts: the update style is the Sports Binge default and follows the reference post', () => {
+  const n = { kind: 'news', sport: 'cricket', source: 'India.com', title: 'Smriti Mandhana, Shafali Verma break world record', summary: 'Become first pair to tally 3000 partnership runs in T20Is.' };
+  const p = posterPrompt(n, { brand: 'tsb', words: { eyebrow: 'IND-W VS ZIM-W 2026' } });
+  assert.match(p, /1080×1350 \(4:5/);
+  assert.match(p, /STYLE REFERENCE[^\n]*\/studio\/refs\/tsb-update\.jpg/);
+  assert.match(p, /yellow bar 18px wide runs down the full left edge/);
+  // names gold, the rest white, the opening name's first line white, the short line biggest
+  const lines = [...p.matchAll(/HEADLINE LINE \d: "([^"]+)" — (GOLD|WHITE), about (\d+)px/g)].map((m) => `${m[1]}|${m[2]}`);
+  assert.deepEqual(lines, ['SMRITI|WHITE', 'MANDHANA,|GOLD', 'SHAFALI VERMA|GOLD', 'BREAK|WHITE', 'WORLD RECORD|WHITE']);
+  assert.match(p, /HEADLINE LINE 4: "BREAK" — WHITE, about 135px/);
+  assert.match(p, /CORNER TAG \(two lines\): "SPORTS \/ UPDATE"[\s\S]*CATEGORY: "CRICKET"[\s\S]*MATCH LINE: "IND-W VS ZIM-W 2026"/);
+  assert.match(p, /CREDIT LINE 1 \(source\): "India\.com"[\s\S]*CREDIT LINE 2: "SPORTSBINGE"/);
+  assert.doesNotMatch(p, /Didone/);
+  // "… at Asian Games" leaves the headline for the match line; no line is ever cut
+  const medal = posterPrompt({ kind: 'news', sport: 'athletics', title: "Parul Chaudhary wins bronze in women's 5000m at Asian Games", summary: 'She clocked 15:14.61, a national record.' });
+  assert.match(medal, /MEDAL \/ UPDATE[\s\S]*MATCH LINE: "ASIAN GAMES 2026"[\s\S]*"PARUL" — WHITE[\s\S]*"CHAUDHARY" — GOLD/);
+  assert.doesNotMatch(medal, /HEADLINE LINE \d: "[^"]*ASIAN/);
+  assert.match(medal, /COMPETITION LOGO: the ASIAN GAMES 2026 emblem/);
+  // a live match: score rows with flags, a connective set small, no empty score
+  const live = posterPrompt({ kind: 'match', status: { state: 'in' }, league: { path: 'cricket/x', name: 'Australia tour of South Africa' }, home: { name: 'South Africa', abbr: 'SA', score: '20/2 (12.2 ov)' }, away: { name: 'Australia', abbr: 'AUS', score: '' } });
+  assert.match(live, /HEADLINE LINE 2: "VS" — WHITE, about 56px/);
+  assert.match(live, /SCORE ROW 1: "SOUTH AFRICA — 20\/2 \(12\.2 ov\)"\n• SCORE ROW 2: "AUSTRALIA"\n/);
+  assert.match(live, /SOUTH AFRICA — its real flag; AUSTRALIA — its real flag/);
+  // MUSC keeps its own look; classic stays available
+  assert.match(posterPrompt(n, { brand: 'tsb', style: 'classic' }), /1080×1440/);
+  assert.doesNotMatch(posterPrompt(n, { brand: 'musc' }), /update style/);
 });
