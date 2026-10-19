@@ -526,17 +526,217 @@ function logoLines(item, brand, words) {
 // `exact` is false when the brand has no post in that layout and a close one stands in.
 export function styleRef(item, opts = {}) {
   const brand = opts.brand || 'tsb';
+  if (brand === 'tsb' && opts.style !== 'classic') return { key: 'update', exact: true, url: `${SITE}/studio/refs/tsb-update.jpg`, logos: logoSheetUrl(item, opts) };
   const { key } = planFor(item, opts);
   const exact = REFS[brand].includes(key);
   const near = exact ? key : brand === 'musc' ? (key === 'result' ? 'matchday' : 'head') : 'medal-bottom';
   return { key, exact, url: `${SITE}/studio/refs/${brand}-${near}.jpg`, logos: logoSheetUrl(item, opts) };
 }
 
+// ---------------------------------------------------------------- the update style
+// The Sports Binge house style (docs/STYLE_SHEETS.md, "Update style"), read from the
+// page's SMRITI MANDHANA, SHAFALI VERMA BREAK WORLD RECORD post: 4:5, near-black, a yellow
+// edge bar, the wordmark top-left, a two-line corner tag, a category tick, a spaced match
+// line, a stacked headline in a heavy condensed grotesque (names in gold, the rest in
+// white, short lines bigger), a spaced subline over a yellow rule, the subject cut out on
+// the right with black-and-white ghosts of the same photo behind, credit and handle in
+// the footer. Every kind of story is set in it; only the blocks under the headline change.
+const STOP_END = /^(AT|IN|ON|OF|THE|A|AN|AND|TO|FOR|WITH|BY|AS|FROM|AFTER|VS)$/;
+const SPORTS = { soccer: 'FOOTBALL', football: 'FOOTBALL', cricket: 'CRICKET', basketball: 'BASKETBALL', tennis: 'TENNIS', athletics: 'ATHLETICS', hockey: 'HOCKEY', kabaddi: 'KABADDI', badminton: 'BADMINTON', f1: 'FORMULA 1', racing: 'MOTORSPORT', golf: 'GOLF', boxing: 'BOXING', shooting: 'SHOOTING', chess: 'CHESS', wrestling: 'WRESTLING', squash: 'SQUASH', mma: 'MMA', rugby: 'RUGBY', baseball: 'BASEBALL', 'table-tennis': 'TABLE TENNIS' };
+function categoryOf(item) {
+  const raw = String(item.sport || item.league?.path || '').split('/')[0].toLowerCase();
+  const sport = SPORTS[raw] || (raw ? UP(raw.replace(/-/g, ' ')) : '');
+  const t = `${item.title || ''} ${item.league?.name || ''} ${item.home?.name || ''}`;
+  return sport && /\b(women|women's|-w)\b|\bW\b/i.test(t) ? `WOMEN'S ${sport}` : sport;
+}
+
+// A news headline as a statement (the page writes the story, not a label), at most nine words.
+function statementOf(item) {
+  if (item.kind !== 'news') {
+    const h = item.home || {};
+    const a = item.away || {};
+    const hs = Number(h.score);
+    const as = Number(a.score);
+    if (item.status?.state === 'post' && Number.isFinite(hs) && Number.isFinite(as) && h.score !== '' && a.score !== '') return hs === as ? `${h.name} and ${a.name} draw` : hs > as ? `${h.name} beat ${a.name}` : `${a.name} beat ${h.name}`;
+    return `${h.name} vs ${a.name}`;
+  }
+  let t = clean(item.title).replace(/\s+[-–|]\s+[^-–|]{2,40}$/, '').replace(/["“”‘’]/g, (c) => (/[‘’]/.test(c) ? "'" : ''));
+  const clause = t.split(/\s*[:;–—]\s+/)[0];
+  if (clause.split(' ').length >= 4) t = clause;
+  // "… at Asian Games" / "… in the Premier League": the match line already says where
+  const placeless = t.replace(/\s+(?:at|in|during)\s+(?:the\s+)?[A-Z][\w'’-]*(?:\s+[A-Z0-9][\w'’-]*)*$/, '');
+  if (placeless.split(' ').length >= 3) t = placeless;
+  let ws = t.split(/\s+/).slice(0, 9);
+  while (ws.length > 3 && STOP_END.test(UP(ws[ws.length - 1]).replace(/[^A-Z]/g, ''))) ws.pop();
+  return ws.join(' ').replace(/[.,]$/, '');
+}
+
+// The fewest lines of at most `max` characters, the shortest first line among those (a
+// short first line is set biggest, like BREAK / WORLD RECORD).
+function wrapUpd(words, max = 13) {
+  let best = null;
+  const n = words.length;
+  for (let mask = 0; mask < 1 << Math.max(0, n - 1); mask++) {
+    const lines = [];
+    let cur = [words[0]];
+    for (let i = 1; i < n; i++) {
+      if (mask & (1 << (i - 1))) {
+        lines.push(cur.join(' '));
+        cur = [words[i]];
+      } else cur.push(words[i]);
+    }
+    lines.push(cur.join(' '));
+    if (lines.some((l) => l.length > max && l.includes(' '))) continue;
+    const dangling = lines.slice(0, -1).filter((l) => STOP_END.test(l.split(' ').pop())).length;
+    if (!best || lines.length < best.lines.length || (lines.length === best.lines.length && (dangling < best.dangling || (dangling === best.dangling && lines[0].length < best.lines[0].length)))) best = { lines, dangling };
+  }
+  best = best?.lines;
+  return best || [words.join(' ')];
+}
+
+// Headline lines with their colour and size: names (people, teams, nations) gold, the rest
+// white; when the headline opens on a name that breaks over two lines, its first line
+// stays white (SMRITI / MANDHANA,).
+export function updateLines(headline, item, kind) {
+  const gold = new Set();
+  const addName = (n) => String(n || '').toUpperCase().split(/\s+/).forEach((x) => x.length > 1 && gold.add(x.replace(/[^A-Z0-9À-Ý-]/g, '')));
+  if (item.kind === 'news') {
+    namesIn(`${item.title || ''} ${item.summary || ''}`).forEach(addName);
+    // in a sentence-case title every capitalised word is a name (Kohli hits 50th ODI hundred)
+    const tw = clean(item.title).split(' ');
+    if (tw.filter((x) => /^[^A-Z]/.test(x)).length * 2 >= tw.length)
+      tw.forEach((x, i) => /^[A-Z][a-zà-ÿ'’]+[,.]?$/.test(x) && !(i === 0 && /^(The|A|An|After|How|Why|What|When|Watch|Live|Report|Breaking|Big|New)$/.test(x)) && !new RegExp(`^${NOT_IN_NAMES.source}$`).test(x) && addName(x.replace(/['’]s$/, '')));
+    for (const m of `${item.title || ''}`.matchAll(new RegExp(NATION_IN.source, 'gi'))) addName(m[1]);
+  } else [item.home?.name, item.away?.name].forEach(addName);
+  let tokens = UP(headline).replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  const isGold = (t, i) => gold.has(t.replace(/'S$/, '').replace(/[^A-Z0-9À-Ý-]/g, '')) || (kind === 'milestone' && i === 0 && /^\d/.test(t));
+  const layout = (toks) => {
+    const segs = [];
+    toks.forEach((t, i) => {
+      const g = isGold(t, i);
+      if (segs.length && segs[segs.length - 1].gold === g) segs[segs.length - 1].words.push(t);
+      else segs.push({ gold: g, words: [t] });
+    });
+    const out = [];
+    segs.forEach((sg, si) => wrapUpd(sg.words).forEach((l, li, all) => out.push({ text: l, gold: sg.gold && !(si === 0 && li === 0 && all.length > 1) })));
+    return out;
+  };
+  // never more than six lines: drop words from the end (and any word left dangling) rather than cut a line
+  let lines = layout(tokens);
+  while (lines.length > 6 && tokens.length > 3) {
+    tokens = tokens.slice(0, -1);
+    while (tokens.length > 3 && STOP_END.test(tokens[tokens.length - 1].replace(/[^A-Z]/g, ''))) tokens = tokens.slice(0, -1);
+    lines = layout(tokens);
+  }
+  // cap height at 1080 wide, fitted to the reference post (BREAK 135, SMRITI 106, MANDHANA 91, SHAFALI VERMA 72)
+  return lines.map((l) => ({ ...l, cap: STOP_END.test(l.text) ? 56 : Math.round(Math.min(135, 36 + 500 / Math.max(4, l.text.length))) }));
+}
+
+const UPD_LOOK = [
+  'TYPE: headline in a heavy condensed grotesque sans, all capitals, flat fill, tight leading (0.95) and tight tracking — like Bebas Neue Bold / Anton / Druk Condensed. Labels, sublines, credit and handle in a clean geometric sans (Poppins / Montserrat): labels medium weight with 0.25–0.35em letter spacing, "SPORTSBINGE" in the credit bold. No serif anywhere except inside our wordmark.',
+  'COLOUR: background near-black #0A0A0A; white #FFFFFF; the gold of the names a soft vertical gradient #F7D98A → #F0B43A; accent yellow #F5B52D for the edge bars, the category tick, the rules and the handle. Nothing else is coloured except the photo.',
+  'PHOTO: the subject in full, natural colour with warm stadium light, contrast slightly up, cut out cleanly with a soft dark falloff where it meets the type; ghosts are black-and-white, low contrast, 20–35% opacity, softly blurred at their edges; the whole canvas carries a soft vignette and very fine grain.',
+  'RHYTHM: lots of black space; everything on the left aligned to one margin (62px at 1080 wide); the headline is the loudest thing, the photo second, all other text small and quiet.',
+];
+
+function updatePrompt(item, { words = {}, size = '4:5', when = '', photo = true, headline = '' } = {}) {
+  const kind = kindOf(item);
+  const w = { ...Object.fromEntries(Object.entries(words).filter(([, v]) => v !== undefined && v !== '')) };
+  const head = clean(headline) || statementOf(item);
+  const lines = updateLines(head, item, kind);
+  const dims = size === '9:16' ? '1080×1920 (9:16 story — keep the same blocks, give the photo the extra height)' : size === '1:1' ? '1080×1080 (1:1 — same blocks, tighter)' : '1080×1350 (4:5 portrait, the page’s post shape)';
+  const isMatch = item.kind !== 'news' && item.home && item.away;
+  const scored = isMatch && item.status?.state !== 'pre' && item.home.score !== undefined && item.home.score !== '';
+  const tag = kind === 'medal' ? ['MEDAL', 'UPDATE'] : kind === 'result' ? ['MATCH', 'RESULT'] : kind === 'preview' ? ['MATCH', 'PREVIEW'] : kind === 'live' ? ['LIVE', 'UPDATE'] : kind === 'quote' ? ['IN THEIR', 'WORDS'] : ['SPORTS', 'UPDATE'];
+  const year = (item.date ? new Date(item.date) : new Date()).getUTCFullYear();
+  const matchLine = isMatch ? `${UP(item.home.abbr || item.home.name)} VS ${UP(item.away.abbr || item.away.name)} ${year}` : UP(w.eyebrow || compLogo(item, w)?.name || item.league?.name || '');
+  // the summary's first sentence, when it is short enough to stand as the subline
+  const first = item.kind === 'news' && item.summary ? clean(item.summary).split(/(?<=[.!?])\s/)[0].split(/\s+/) : [];
+  const fromSummary = first.length <= 10 ? first : [];
+  const subline = UP(w.kicker || (isMatch ? (item.status?.state === 'pre' ? when : [item.note, item.venue?.name].filter(Boolean).join(' · ')) : w.name || fromSummary.join(' ').replace(/[.,]$/, '')));
+  const stats = (w.stats || []).slice(0, 3);
+  const credit = item.kind === 'news' ? clean(item.source || '') : '';
+  const subject = item.kind === 'news' ? personIn(item.title) || 'the athlete or team in the story' : `${item.home?.name || ''} and ${item.away?.name || ''} players`;
+  const story = item.kind === 'news' ? `${clean(item.title)}${item.summary ? ' — ' + clean(item.summary).slice(0, 300) : ''}` : `${item.home?.name} ${item.home?.score ?? ''} – ${item.away?.score ?? ''} ${item.away?.name} · ${item.league?.name || ''}${item.note ? ' · ' + item.note : ''}${item.venue?.name ? ' · ' + item.venue.name : ''}`;
+  const comp = compLogo(item, w);
+  const T = [];
+  const add = (label, v) => v && T.push(`• ${label}: "${clean(v)}"`);
+  add('CORNER TAG (two lines)', tag.join(' / '));
+  add('CATEGORY', categoryOf(item));
+  add('MATCH LINE', matchLine);
+  lines.forEach((l, i) => T.push(`• HEADLINE LINE ${i + 1}: "${l.text}" — ${l.gold ? 'GOLD' : 'WHITE'}, about ${l.cap}px cap height`));
+  add('SUBLINE', subline);
+  if (isMatch)
+    [item.home, item.away].forEach((t, i) => add(`SCORE ROW ${i + 1}`, `${UP(t.name)}${scored && t.score ? ' — ' + t.score : ''}`));
+  if (isMatch && item.status?.state === 'pre' && when) add('DATE & TIME', when);
+  stats.forEach((st) => add('STAT', `${st.value} — ${UP(st.label)}`));
+  for (const p of (w.podium || []).slice(0, 3)) add('STAT', `${p.value || UP(p.metal)} — ${UP(p.name)}${p.value ? ' · ' + UP(p.metal) : ''}`);
+  add('CREDIT LINE 1 (source)', credit);
+  add('CREDIT LINE 2', 'SPORTSBINGE');
+  add('HANDLE', BRAND_INFO.tsb.handle);
+  const ref = styleRef(item, { brand: 'tsb', words: w });
+  const out = [
+    `You are the senior designer of The Sports Binge (@thesportsbinge) on Instagram. Design ONE finished post image in the page's update style.`,
+    '',
+    `STORY (facts only — do not add any): ${story}`,
+    `FORMAT: ${dims}, edge to edge, no border, no mock-up, no phone frame.`,
+    '',
+    'ATTACHMENTS (in this order):',
+    `• Image 1 — the real photo${photo ? '' : ' (if you have one; see PHOTO)'}. Extra photos of the same story, if attached, are for the ghost images.`,
+    `• Image 2 — STYLE REFERENCE, a real @thesportsbinge post in this exact style: ${ref.url}`,
+    `• Image 3 — LOGO SHEET, our real logos for this post: ${ref.logos}`,
+    '',
+    'STYLE REFERENCE RULES:',
+    '• Make it the next post in the same series as the style reference: the same grid, margins, edge bars, logo position, label styles, headline typeface and gold, photo treatment with ghosts, footer and proportions.',
+    '• Copy NOTHING else from it: none of its words, people, numbers, kit or logos. All words come from TEXT; the people come from the real photo.',
+    '',
+    'LOGOS (from the logo sheet — copy exactly, never redraw or invent):',
+    '• BRAND LOGO: our wordmark (THE / SPORTS in white, BINGE in gold, ONLINE MAGAZINE tiny) top-left, about 165px wide, 62px from the left and 32px from the top.',
+    comp ? `• COMPETITION LOGO: the ${comp.name} emblem from the logo sheet, small (about 80px) on a white circle, right-aligned under the corner tag.` : '• COMPETITION LOGO: none — do not add one.',
+    isMatch ? `• FLAGS / CRESTS: ${[item.home, item.away].map((t) => `${UP(t.name)} — ${isNationTeam(t) ? 'its real flag' : 'its club crest'}`).join('; ')}, from the logo sheet, small (about 44px tall) at the start of each SCORE ROW.` : null,
+    '• Do not draw the logo sheet itself: no grey tiles, labels or heading from it.',
+    '',
+    'PHOTO:',
+    photo
+      ? `• I am attaching a real photo of ${subject}. Use it EXACTLY as given: do not redraw, retouch, beautify or change any face, body, hair, kit, numbers or logos. You may only cut out, crop, scale, place, colour-grade and make black-and-white ghost copies of it.`
+      : '• No photo is attached. Do NOT invent the face of a real person: use the athlete seen from behind or in silhouette against stadium lights, or the equipment in the venue, shallow depth of field.',
+    '• If you cannot keep a real person’s face unchanged, leave the photo area dark rather than generating a lookalike.',
+    '',
+    'LAYOUT — The Sports Binge update post (positions at 1080 wide):',
+    '• Background near-black with a soft vignette. A solid yellow bar 18px wide runs down the full left edge; a second yellow bar 18px wide covers only the bottom 10% of the right edge.',
+    '• Top-left: the brand logo. Top-right, right-aligned 36px from the edge: the CORNER TAG in two lines of light spaced capitals (~20px, 0.35em tracking) with a 90px yellow rule under it.',
+    '• At 16% down, left: the CATEGORY — a 3px yellow vertical tick, then spaced capitals (~20px), with a white hairline under it running ~300px.',
+    '• At 20% down: the MATCH LINE in spaced white capitals (~24px, 0.25em tracking).',
+    '• From 23% to about 64% down, left-aligned, in a column about half the width: the HEADLINE LINES in order, each in its colour at about the cap height given (short lines bigger), tight leading, no line wider than ~55% of the canvas.',
+    '• Under the headline: the SUBLINE in spaced white capitals (~26px, 0.2em tracking, one or two lines within the headline column), then a short yellow rule 130×5px.',
+    isMatch ? '• Under the rule: the SCORE ROWS, one per team — flag or crest, the team name in white condensed capitals (~44px), the score in gold condensed (~56px); thin white hairline between the rows. A DATE & TIME line, if given, in spaced white capitals under them.' : null,
+    !isMatch && (stats.length || (w.podium || []).length) ? '• Under the rule: the STATs in a row split by thin rules — each the value in gold condensed capitals (~56px) over its label in tiny spaced white capitals.' : null,
+    '• Right side, from about 18% down to the bottom edge: the real photo — the subject(s) cut out cleanly in full colour, filling the right half, their left edge falling off into the black; they may pass behind the end of a long headline line but never cover a letter.',
+    '• Behind everything: black-and-white ghost copies of the photo (or the extra photos) at 20–35% opacity — one large and soft in the top-right behind the subject’s head, one in the bottom-left quarter (a wider or back view) fading up into the black.',
+    '• Footer, bottom 6%: the CREDIT bottom-left at the left margin — line 1 in regular sans (~22px), "SPORTSBINGE" under it in bold sans (~28px), white; the HANDLE bottom-right in yellow regular sans (~24px), on the same baseline as SPORTSBINGE.',
+    '',
+    'TEXT (exact words, exact spelling — nothing else; any text spot in the LAYOUT with no line here is left out, never filled with made-up words or numbers):',
+    ...T,
+    '',
+    'LOOK:',
+    ...UPD_LOOK.map((x) => `• ${x}`),
+    '',
+    'MUST NOT LOOK AI-GENERATED:',
+    ...NOT_AI.map((x) => `• ${x}`),
+    '',
+    'BEFORE YOU FINISH, CHECK: it could sit next to the style reference on the grid and look like the same designer made both; the yellow edge bars, wordmark, corner tag, category tick, headline colours and footer are all there; every word matches the TEXT list letter for letter; no extra text; faces untouched; every logo matches the logo sheet exactly; nothing is cropped at the edges.',
+  ];
+  return out.filter((x) => x !== null).join('\n');
+}
+
 // The full prompt. `photo` says whether the owner will attach a real photo; `pinned`
 // that the owner chose the layout, so the story's shape doesn't override it.
-export function posterPrompt(item, { brand = 'tsb', words = {}, template = '', size = '3:4', when = '', photo = true, pinned = false } = {}) {
+// The Sports Binge prompts use the update style unless `style: 'classic'` asks for the
+// medal-magazine layouts (3:4 grid tiles) above; MUSC has its own.
+export function posterPrompt(item, { brand = 'tsb', words = {}, template = '', size = '3:4', when = '', photo = true, pinned = false, style = 'update', headline = '' } = {}) {
+  if (brand === 'tsb' && style !== 'classic') return updatePrompt(item, { words, size: size === '3:4' ? '4:5' : size, when, photo, headline });
   const { w, key } = planFor(item, { brand, words, template, pinned });
-  const ref = styleRef(item, { brand, words, template, pinned });
+  const ref = styleRef(item, { brand, words, template, pinned, style: 'classic' });
   const usesPhoto = PHOTO_LAYOUTS.has(key);
   const L = (brand === 'musc' ? MUSC_LAYOUTS : TSB_LAYOUTS)[key];
   const info = BRAND_INFO[brand];

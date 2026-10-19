@@ -126,6 +126,30 @@ tells the AI to match it exactly but copy none of its words, people or logos; th
 matchday and signing; its other layouts point at the closest one for type and grade only
 (the other MUSC tiles were video frames or too small).
 
+## @thesportsbinge — update style (the AI prompts' default)
+
+Read from the page's SMRITI MANDHANA, SHAFALI VERMA BREAK WORLD RECORD post (1122×1402,
+**4:5**), kept as `public/studio/refs/tsb-update.jpg`. Measured at 1080 wide:
+
+| Element | Where / how |
+| --- | --- |
+| Background | near-black #0A0A0A, soft vignette, fine grain |
+| Edge bars | yellow #F5B52D, 18 px: full height on the left; bottom 10% on the right |
+| Wordmark | top-left, ~165 px wide, 62 px in, 32 px down |
+| Corner tag | top-right, two lines of light spaced caps (SPORTS / UPDATE, ~20 px, 0.35em), 90 px yellow rule under |
+| Category | 16% down: 3 px yellow tick + spaced caps (WOMEN'S CRICKET), white hairline ~300 px |
+| Match line | 20% down: spaced caps (IND-W VS ZIM-W 2026, ~24 px, 0.25em) |
+| Headline | 23–64% down, left column ≤55% wide; heavy condensed grotesque caps (Bebas / Anton / Druk), leading 0.95; names gold (#F7D98A→#F0B43A), the rest white; short lines bigger — BREAK ~135 px cap, SMRITI ~106, MANDHANA ~91, SHAFALI VERMA ~72; an opening name that breaks over two lines keeps its first line white |
+| Subline | spaced white caps (~26 px, 0.2em), then a 130×5 px yellow rule |
+| Photo | subject cut out on the right half in full colour, left edge falling into black; black-and-white ghosts of the same photo at 20–35%: one large top-right, one bottom-left (a back view) |
+| Footer | bottom-left source (regular ~22 px) over SPORTSBINGE (bold ~28 px); bottom-right @thesportsbinge in yellow (~24 px) |
+
+Every kind of story is set in this one system; only the blocks under the headline change:
+score rows with flags/crests for matches, a stat row for numbers and medals; the corner
+tag says SPORTS / MEDAL / LIVE UPDATE, MATCH RESULT / PREVIEW or IN THEIR WORDS. The
+headline is the story as a statement (the title, ≤9 words, "… at <competition>" moved to
+the match line), wrapped into the fewest lines of ≤13 characters with the shortest first.
+
 ## @musc_reddevils
 
 ### Type (matched)

@@ -49,6 +49,7 @@ import { posterPrompt } from './prompts.js';
 export const FORMATS = [
   { id: 'poster', label: 'AI Poster / Video' },
   { id: 'prompt-tsb', label: 'AI prompt · Sports Binge' },
+  { id: 'prompt-tsb-classic', label: 'AI prompt · Sports Binge (classic medal style)' },
   { id: 'prompt-musc', label: 'AI prompt · MUSC' },
   { id: 'text', label: 'Text' },
   { id: 'markdown', label: 'Markdown' },
@@ -304,6 +305,7 @@ export function formatMatch(m, fmt, opts = {}) {
   switch (fmt) {
     case 'poster': return toPoster(m, opts);
     case 'prompt-tsb': return posterPrompt(m, { brand: 'tsb', when: formatDate(m.date, opts.timeZone || 'UTC') });
+    case 'prompt-tsb-classic': return posterPrompt(m, { brand: 'tsb', style: 'classic', when: formatDate(m.date, opts.timeZone || 'UTC') });
     case 'prompt-musc': return posterPrompt(m, { brand: 'musc', when: formatDate(m.date, opts.timeZone || 'UTC') });
     case 'markdown': return toMarkdown(m, opts);
     case 'json': return toJSON(m);

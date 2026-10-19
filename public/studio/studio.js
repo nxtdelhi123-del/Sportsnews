@@ -389,10 +389,22 @@ $('#cutoutOn').addEventListener('change', (e) => {
 // A prompt for an image AI, with this post's words and layout, and the real post of the
 // same layout to attach as its style reference. A layout picked on the desk is kept.
 const SIZE_NAME = { tall: '3:4', post: '4:5', story: '9:16', square: '1:1' };
-const promptOpts = (p) => ({ brand: state.brand, words: { ...p.words, ...(edits() || {}) }, template: state.template || p.template, pinned: !!state.template, size: SIZE_NAME[state.size], when: [p.when?.day, p.when?.time].filter(Boolean).join(', '), photo: true });
+// TSB prompts come in the update style (yellow, condensed sans) or the classic medal style.
+const promptStyle = () => (state.brand === 'tsb' ? $('#promptStyle').value : 'classic');
+const promptOpts = (p) => ({ brand: state.brand, style: promptStyle(), headline: edits()?.headline, words: { ...p.words, ...(edits() || {}) }, template: state.template || p.template, pinned: !!state.template, size: SIZE_NAME[state.size], when: [p.when?.day, p.when?.time].filter(Boolean).join(', '), photo: true });
+try {
+  $('#promptStyle').value = localStorage.getItem('studio:promptStyle') || 'update';
+} catch {}
+$('#promptStyle').addEventListener('change', () => {
+  try {
+    localStorage.setItem('studio:promptStyle', $('#promptStyle').value);
+  } catch {}
+  setStyleRef();
+});
 function setStyleRef() {
   const p = state.current;
   if (!p) return;
+  $('#promptStyle').hidden = state.brand !== 'tsb';
   const ref = styleRef(p.story, promptOpts(p));
   $('#styleRef').href = ref.url;
   $('#styleRef').download = ref.url.split('/').pop();

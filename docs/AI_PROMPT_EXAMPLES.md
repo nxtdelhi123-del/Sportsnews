@@ -1,6 +1,6 @@
 # Example AI prompts
 
-Copied by the newsroom (Copy, Formats → AI prompt) and the Studio (🎨 Copy AI prompt). Paste into ChatGPT, Gemini or similar and attach, in this order:
+Copied by the newsroom (Copy, Formats → AI prompt) and the Studio (🎨 Copy AI prompt). The Sports Binge prompts use the **update style** (read from the SMRITI MANDHANA, SHAFALI VERMA BREAK WORLD RECORD post) unless the Studio's style menu or Formats → "classic medal style" asks for the classic layouts. Paste into ChatGPT, Gemini or similar and attach, in this order:
 
 1. the real photo,
 2. the **style reference** the prompt links — a real post from the page in the same layout (the Studio's ⤓ Style reference button downloads it),
@@ -8,7 +8,144 @@ Copied by the newsroom (Copy, Formats → AI prompt) and the Studio (🎨 Copy A
 
 Image AIs copy an attached post far more faithfully than any description, so the reference is what makes the result read as the next post in the same grid, and the logo sheet is what puts the real logos on it instead of invented ones. All references: `public/studio/refs/`, contact sheet `docs/style-refs.jpg`.
 
-## The Sports Binge — medal
+## The Sports Binge — update style (default)
+
+```
+You are the senior designer of The Sports Binge (@thesportsbinge) on Instagram. Design ONE finished post image in the page's update style.
+
+STORY (facts only — do not add any): Smriti Mandhana, Shafali Verma break world record — Become first pair to tally 3000 partnership runs in T20Is.
+FORMAT: 1080×1350 (4:5 portrait, the page’s post shape), edge to edge, no border, no mock-up, no phone frame.
+
+ATTACHMENTS (in this order):
+• Image 1 — the real photo. Extra photos of the same story, if attached, are for the ghost images.
+• Image 2 — STYLE REFERENCE, a real @thesportsbinge post in this exact style: https://sportsnews-delta.vercel.app/studio/refs/tsb-update.jpg
+• Image 3 — LOGO SHEET, our real logos for this post: https://sportsnews-delta.vercel.app/api/studio/logos?brand=tsb
+
+STYLE REFERENCE RULES:
+• Make it the next post in the same series as the style reference: the same grid, margins, edge bars, logo position, label styles, headline typeface and gold, photo treatment with ghosts, footer and proportions.
+• Copy NOTHING else from it: none of its words, people, numbers, kit or logos. All words come from TEXT; the people come from the real photo.
+
+LOGOS (from the logo sheet — copy exactly, never redraw or invent):
+• BRAND LOGO: our wordmark (THE / SPORTS in white, BINGE in gold, ONLINE MAGAZINE tiny) top-left, about 165px wide, 62px from the left and 32px from the top.
+• COMPETITION LOGO: none — do not add one.
+• Do not draw the logo sheet itself: no grey tiles, labels or heading from it.
+
+PHOTO:
+• I am attaching a real photo of Smriti Mandhana. Use it EXACTLY as given: do not redraw, retouch, beautify or change any face, body, hair, kit, numbers or logos. You may only cut out, crop, scale, place, colour-grade and make black-and-white ghost copies of it.
+• If you cannot keep a real person’s face unchanged, leave the photo area dark rather than generating a lookalike.
+
+LAYOUT — The Sports Binge update post (positions at 1080 wide):
+• Background near-black with a soft vignette. A solid yellow bar 18px wide runs down the full left edge; a second yellow bar 18px wide covers only the bottom 10% of the right edge.
+• Top-left: the brand logo. Top-right, right-aligned 36px from the edge: the CORNER TAG in two lines of light spaced capitals (~20px, 0.35em tracking) with a 90px yellow rule under it.
+• At 16% down, left: the CATEGORY — a 3px yellow vertical tick, then spaced capitals (~20px), with a white hairline under it running ~300px.
+• At 20% down: the MATCH LINE in spaced white capitals (~24px, 0.25em tracking).
+• From 23% to about 64% down, left-aligned, in a column about half the width: the HEADLINE LINES in order, each in its colour at about the cap height given (short lines bigger), tight leading, no line wider than ~55% of the canvas.
+• Under the headline: the SUBLINE in spaced white capitals (~26px, 0.2em tracking, one or two lines within the headline column), then a short yellow rule 130×5px.
+• Right side, from about 18% down to the bottom edge: the real photo — the subject(s) cut out cleanly in full colour, filling the right half, their left edge falling off into the black; they may pass behind the end of a long headline line but never cover a letter.
+• Behind everything: black-and-white ghost copies of the photo (or the extra photos) at 20–35% opacity — one large and soft in the top-right behind the subject’s head, one in the bottom-left quarter (a wider or back view) fading up into the black.
+• Footer, bottom 6%: the CREDIT bottom-left at the left margin — line 1 in regular sans (~22px), "SPORTSBINGE" under it in bold sans (~28px), white; the HANDLE bottom-right in yellow regular sans (~24px), on the same baseline as SPORTSBINGE.
+
+TEXT (exact words, exact spelling — nothing else; any text spot in the LAYOUT with no line here is left out, never filled with made-up words or numbers):
+• CORNER TAG (two lines): "SPORTS / UPDATE"
+• CATEGORY: "CRICKET"
+• MATCH LINE: "IND-W VS ZIM-W 2026"
+• HEADLINE LINE 1: "SMRITI" — WHITE, about 119px cap height
+• HEADLINE LINE 2: "MANDHANA," — GOLD, about 92px cap height
+• HEADLINE LINE 3: "SHAFALI VERMA" — GOLD, about 74px cap height
+• HEADLINE LINE 4: "BREAK" — WHITE, about 135px cap height
+• HEADLINE LINE 5: "WORLD RECORD" — WHITE, about 78px cap height
+• SUBLINE: "BECOME FIRST PAIR TO TALLY 3000 PARTNERSHIP RUNS IN T20IS"
+• CREDIT LINE 1 (source): "India.com"
+• CREDIT LINE 2: "SPORTSBINGE"
+• HANDLE: "@thesportsbinge"
+
+LOOK:
+• TYPE: headline in a heavy condensed grotesque sans, all capitals, flat fill, tight leading (0.95) and tight tracking — like Bebas Neue Bold / Anton / Druk Condensed. Labels, sublines, credit and handle in a clean geometric sans (Poppins / Montserrat): labels medium weight with 0.25–0.35em letter spacing, "SPORTSBINGE" in the credit bold. No serif anywhere except inside our wordmark.
+• COLOUR: background near-black #0A0A0A; white #FFFFFF; the gold of the names a soft vertical gradient #F7D98A → #F0B43A; accent yellow #F5B52D for the edge bars, the category tick, the rules and the handle. Nothing else is coloured except the photo.
+• PHOTO: the subject in full, natural colour with warm stadium light, contrast slightly up, cut out cleanly with a soft dark falloff where it meets the type; ghosts are black-and-white, low contrast, 20–35% opacity, softly blurred at their edges; the whole canvas carries a soft vignette and very fine grain.
+• RHYTHM: lots of black space; everything on the left aligned to one margin (62px at 1080 wide); the headline is the loudest thing, the photo second, all other text small and quiet.
+
+MUST NOT LOOK AI-GENERATED:
+• Make it look like a real post designed in Photoshop by a sports media page and shot by an agency photographer — NOT like AI art.
+• Photo: real editorial sports photography (Getty / Reuters / AP style), 70–200mm telephoto look, natural skin texture with pores, real sweat and fabric folds, real stadium light and crowd bokeh, correct hands and fingers, correct kit, correct equipment.
+• Do NOT add: plastic or airbrushed skin, glowing outlines, lens flares, sparkles, lightning, smoke, motion streaks, neon, 3D chrome text, bevel/emboss, fantasy backgrounds, extra people, duplicated limbs, warped numbers on shirts, made-up sponsor logos, made-up text anywhere.
+• Text: render ONLY the words listed under TEXT (plus the lettering inside the real logos), spelled exactly, in the places described. No other words, no lorem ipsum, no watermark. Every letter crisp and evenly spaced.
+• Logos: only the real ones from the attached logo sheet, each copied exactly — same shapes, colours, letters and proportions, crisp edges, no redrawing. Never invent, approximate or add a logo, and no sponsor marks beyond those already on the real photo.
+• Grid discipline: keep text inside a 48px safe margin, align everything to a clear grid, vary sizes strongly (one huge word, the rest small) — no evenly-sized blocks of text.
+
+BEFORE YOU FINISH, CHECK: it could sit next to the style reference on the grid and look like the same designer made both; the yellow edge bars, wordmark, corner tag, category tick, headline colours and footer are all there; every word matches the TEXT list letter for letter; no extra text; faces untouched; every logo matches the logo sheet exactly; nothing is cropped at the edges.
+```
+
+## The Sports Binge — update style, live match
+
+```
+You are the senior designer of The Sports Binge (@thesportsbinge) on Instagram. Design ONE finished post image in the page's update style.
+
+STORY (facts only — do not add any): South Africa 20/2 (12.2 ov) –  Australia · Australia tour of South Africa · St George's Park
+FORMAT: 1080×1350 (4:5 portrait, the page’s post shape), edge to edge, no border, no mock-up, no phone frame.
+
+ATTACHMENTS (in this order):
+• Image 1 — the real photo. Extra photos of the same story, if attached, are for the ghost images.
+• Image 2 — STYLE REFERENCE, a real @thesportsbinge post in this exact style: https://sportsnews-delta.vercel.app/studio/refs/tsb-update.jpg
+• Image 3 — LOGO SHEET, our real logos for this post: https://sportsnews-delta.vercel.app/api/studio/logos?brand=tsb&t1=South+Africa&t2=Australia
+
+STYLE REFERENCE RULES:
+• Make it the next post in the same series as the style reference: the same grid, margins, edge bars, logo position, label styles, headline typeface and gold, photo treatment with ghosts, footer and proportions.
+• Copy NOTHING else from it: none of its words, people, numbers, kit or logos. All words come from TEXT; the people come from the real photo.
+
+LOGOS (from the logo sheet — copy exactly, never redraw or invent):
+• BRAND LOGO: our wordmark (THE / SPORTS in white, BINGE in gold, ONLINE MAGAZINE tiny) top-left, about 165px wide, 62px from the left and 32px from the top.
+• COMPETITION LOGO: none — do not add one.
+• FLAGS / CRESTS: SOUTH AFRICA — its real flag; AUSTRALIA — its real flag, from the logo sheet, small (about 44px tall) at the start of each SCORE ROW.
+• Do not draw the logo sheet itself: no grey tiles, labels or heading from it.
+
+PHOTO:
+• I am attaching a real photo of South Africa and Australia players. Use it EXACTLY as given: do not redraw, retouch, beautify or change any face, body, hair, kit, numbers or logos. You may only cut out, crop, scale, place, colour-grade and make black-and-white ghost copies of it.
+• If you cannot keep a real person’s face unchanged, leave the photo area dark rather than generating a lookalike.
+
+LAYOUT — The Sports Binge update post (positions at 1080 wide):
+• Background near-black with a soft vignette. A solid yellow bar 18px wide runs down the full left edge; a second yellow bar 18px wide covers only the bottom 10% of the right edge.
+• Top-left: the brand logo. Top-right, right-aligned 36px from the edge: the CORNER TAG in two lines of light spaced capitals (~20px, 0.35em tracking) with a 90px yellow rule under it.
+• At 16% down, left: the CATEGORY — a 3px yellow vertical tick, then spaced capitals (~20px), with a white hairline under it running ~300px.
+• At 20% down: the MATCH LINE in spaced white capitals (~24px, 0.25em tracking).
+• From 23% to about 64% down, left-aligned, in a column about half the width: the HEADLINE LINES in order, each in its colour at about the cap height given (short lines bigger), tight leading, no line wider than ~55% of the canvas.
+• Under the headline: the SUBLINE in spaced white capitals (~26px, 0.2em tracking, one or two lines within the headline column), then a short yellow rule 130×5px.
+• Under the rule: the SCORE ROWS, one per team — flag or crest, the team name in white condensed capitals (~44px), the score in gold condensed (~56px); thin white hairline between the rows. A DATE & TIME line, if given, in spaced white capitals under them.
+• Right side, from about 18% down to the bottom edge: the real photo — the subject(s) cut out cleanly in full colour, filling the right half, their left edge falling off into the black; they may pass behind the end of a long headline line but never cover a letter.
+• Behind everything: black-and-white ghost copies of the photo (or the extra photos) at 20–35% opacity — one large and soft in the top-right behind the subject’s head, one in the bottom-left quarter (a wider or back view) fading up into the black.
+• Footer, bottom 6%: the CREDIT bottom-left at the left margin — line 1 in regular sans (~22px), "SPORTSBINGE" under it in bold sans (~28px), white; the HANDLE bottom-right in yellow regular sans (~24px), on the same baseline as SPORTSBINGE.
+
+TEXT (exact words, exact spelling — nothing else; any text spot in the LAYOUT with no line here is left out, never filled with made-up words or numbers):
+• CORNER TAG (two lines): "LIVE / UPDATE"
+• CATEGORY: "CRICKET"
+• MATCH LINE: "SA VS AUS 2026"
+• HEADLINE LINE 1: "SOUTH AFRICA" — GOLD, about 78px cap height
+• HEADLINE LINE 2: "VS" — WHITE, about 56px cap height
+• HEADLINE LINE 3: "AUSTRALIA" — GOLD, about 92px cap height
+• SUBLINE: "ST GEORGE'S PARK"
+• SCORE ROW 1: "SOUTH AFRICA — 20/2 (12.2 ov)"
+• SCORE ROW 2: "AUSTRALIA"
+• CREDIT LINE 2: "SPORTSBINGE"
+• HANDLE: "@thesportsbinge"
+
+LOOK:
+• TYPE: headline in a heavy condensed grotesque sans, all capitals, flat fill, tight leading (0.95) and tight tracking — like Bebas Neue Bold / Anton / Druk Condensed. Labels, sublines, credit and handle in a clean geometric sans (Poppins / Montserrat): labels medium weight with 0.25–0.35em letter spacing, "SPORTSBINGE" in the credit bold. No serif anywhere except inside our wordmark.
+• COLOUR: background near-black #0A0A0A; white #FFFFFF; the gold of the names a soft vertical gradient #F7D98A → #F0B43A; accent yellow #F5B52D for the edge bars, the category tick, the rules and the handle. Nothing else is coloured except the photo.
+• PHOTO: the subject in full, natural colour with warm stadium light, contrast slightly up, cut out cleanly with a soft dark falloff where it meets the type; ghosts are black-and-white, low contrast, 20–35% opacity, softly blurred at their edges; the whole canvas carries a soft vignette and very fine grain.
+• RHYTHM: lots of black space; everything on the left aligned to one margin (62px at 1080 wide); the headline is the loudest thing, the photo second, all other text small and quiet.
+
+MUST NOT LOOK AI-GENERATED:
+• Make it look like a real post designed in Photoshop by a sports media page and shot by an agency photographer — NOT like AI art.
+• Photo: real editorial sports photography (Getty / Reuters / AP style), 70–200mm telephoto look, natural skin texture with pores, real sweat and fabric folds, real stadium light and crowd bokeh, correct hands and fingers, correct kit, correct equipment.
+• Do NOT add: plastic or airbrushed skin, glowing outlines, lens flares, sparkles, lightning, smoke, motion streaks, neon, 3D chrome text, bevel/emboss, fantasy backgrounds, extra people, duplicated limbs, warped numbers on shirts, made-up sponsor logos, made-up text anywhere.
+• Text: render ONLY the words listed under TEXT (plus the lettering inside the real logos), spelled exactly, in the places described. No other words, no lorem ipsum, no watermark. Every letter crisp and evenly spaced.
+• Logos: only the real ones from the attached logo sheet, each copied exactly — same shapes, colours, letters and proportions, crisp edges, no redrawing. Never invent, approximate or add a logo, and no sponsor marks beyond those already on the real photo.
+• Grid discipline: keep text inside a 48px safe margin, align everything to a clear grid, vary sizes strongly (one huge word, the rest small) — no evenly-sized blocks of text.
+
+BEFORE YOU FINISH, CHECK: it could sit next to the style reference on the grid and look like the same designer made both; the yellow edge bars, wordmark, corner tag, category tick, headline colours and footer are all there; every word matches the TEXT list letter for letter; no extra text; faces untouched; every logo matches the logo sheet exactly; nothing is cropped at the edges.
+```
+
+## The Sports Binge — classic medal style
 
 ```
 You are the senior designer of The Sports Binge (@thesportsbinge) on Instagram. Design ONE finished post image.
