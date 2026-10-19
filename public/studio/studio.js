@@ -1,5 +1,6 @@
 import { findSubject, findText, cropHero, cutoutOf, cleanBand, withoutText } from '/studio/cutout.js';
 import { posterPrompt, styleRef } from '/js/prompts.js';
+import { copyText, copyOrShow } from '/js/copy.js';
 
 const ASPECT = { tall: 1080 / 1440, post: 1080 / 1350, story: 1080 / 1920, square: 1 };
 
@@ -280,11 +281,7 @@ async function usePhotoLink(url) {
 
 async function share() {
   const caption = $('#fCaption').value;
-  try {
-    await navigator.clipboard.writeText(caption);
-  } catch {
-    /* clipboard may be unavailable; the share text carries the caption too */
-  }
+  await copyText(caption); // if the browser refuses, the share text carries the caption too
   const file = await state.file;
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
@@ -390,12 +387,12 @@ $('#cutoutOn').addEventListener('change', (e) => {
 // same layout to attach as its style reference. A layout picked on the desk is kept.
 const SIZE_NAME = { tall: '3:4', post: '4:5', story: '9:16', square: '1:1' };
 // TSB prompts come in the update style (yellow, condensed sans) or the classic medal style.
-const promptStyle = () => (state.brand === 'tsb' ? $('#promptStyle').value : 'classic');
+const promptStyle = () => (state.brand === 'tsb' ? $('#promptStyle')?.value || 'update' : 'classic');
 const promptOpts = (p) => ({ brand: state.brand, style: promptStyle(), headline: edits()?.headline, words: { ...p.words, ...(edits() || {}) }, template: state.template || p.template, pinned: !!state.template, size: SIZE_NAME[state.size], when: [p.when?.day, p.when?.time].filter(Boolean).join(', '), photo: true });
 try {
   $('#promptStyle').value = localStorage.getItem('studio:promptStyle') || 'update';
 } catch {}
-$('#promptStyle').addEventListener('change', () => {
+$('#promptStyle')?.addEventListener('change', () => {
   try {
     localStorage.setItem('studio:promptStyle', $('#promptStyle').value);
   } catch {}
@@ -404,28 +401,30 @@ $('#promptStyle').addEventListener('change', () => {
 function setStyleRef() {
   const p = state.current;
   if (!p) return;
-  $('#promptStyle').hidden = state.brand !== 'tsb';
+  if ($('#promptStyle')) $('#promptStyle').hidden = state.brand !== 'tsb';
   const ref = styleRef(p.story, promptOpts(p));
-  $('#styleRef').href = ref.url;
-  $('#styleRef').download = ref.url.split('/').pop();
-  $('#logoSheet').href = ref.logos;
-  $('#logoSheet').download = `${state.brand}-logos.png`;
+  for (const [id, href, name] of [['#styleRef', ref.url, ref.url.split('/').pop()], ['#logoSheet', ref.logos, `${state.brand}-logos.png`]]) {
+    if (!$(id)) continue;
+    $(id).href = href;
+    $(id).download = name;
+  }
 }
 $('#copyPrompt').addEventListener('click', async () => {
   const p = state.current;
   if (!p) return;
-  setStyleRef();
-  const text = posterPrompt(p.story, promptOpts(p));
+  let text;
   try {
-    await navigator.clipboard.writeText(text);
-    toast('Prompt copied. In your image AI attach: the real photo, ⤓ Style reference and ⤓ Logos — then paste.');
-  } catch {
-    toast('Copy failed on this browser');
+    setStyleRef();
+    text = posterPrompt(p.story, promptOpts(p));
+  } catch (e) {
+    return toast(`Could not write the prompt: ${e.message}`);
   }
+  const ok = await copyOrShow(text, 'AI prompt');
+  toast(ok ? 'Prompt copied. In your image AI attach: the real photo, ⤓ Style reference and ⤓ Logos — then paste.' : 'Your browser blocked copying — tap Copy in the box');
 });
 $('#copyCaption').addEventListener('click', async () => {
-  await navigator.clipboard.writeText($('#fCaption').value);
-  toast('Caption copied');
+  const ok = await copyOrShow($('#fCaption').value, 'Caption');
+  toast(ok ? 'Caption copied' : 'Your browser blocked copying — tap Copy in the box');
 });
 $('#reject').addEventListener('click', async () => {
   const p = state.current;
