@@ -946,9 +946,11 @@ test('AI prompts carry the page style, the exact words and the anti-AI rules', (
   assert.match(p, /TOP LINE: "PARUL CHAUDHARY"/);
   assert.match(p, /BIG WORD: "BRONZE"/);
   assert.match(p, /do not redraw, retouch/i);
-  assert.match(p, /do NOT draw or imitate any brand badge/i);
+  assert.match(p, /Never invent, approximate or add a logo/);
+  assert.match(p, /LOGO SHEET, our real logos for this post: https:\/\/sportsnews-delta\.vercel\.app\/api\/studio\/logos\?brand=tsb&c=ASIAN\+GAMES\+2026/);
+  assert.match(p, /BRAND LOGO: our wordmark — "THE"[^\n]*"BINGE" under it in gold/);
+  assert.match(p, /COMPETITION LOGO: the ASIAN GAMES 2026 emblem/);
   assert.match(p, /STYLE REFERENCE, a real @thesportsbinge post in this exact layout: https:\/\/sportsnews-delta\.vercel\.app\/studio\/refs\/tsb-medal-top\.jpg/);
-  assert.match(p, /our badge: https:\/\/sportsnews-delta\.vercel\.app\/studio\/brand\/tsb-badge\.png/);
   assert.match(p, /Copy NOTHING else from it/);
   assert.match(p, /plastic or airbrushed skin/);
   const m = { kind: 'match', status: { state: 'post' }, home: { name: 'Manchester United', score: '4' }, away: { name: 'Burnley', score: '1' }, league: { name: 'Premier League' }, events: [] };
@@ -973,7 +975,9 @@ test('AI prompts: no-photo layouts say so, scorers sit under their team, fixed w
   assert.match(p, /MASTHEAD: "THE SPORTS BINGE"/);
   assert.match(p, /STATUS LABEL: "FULL TIME"/);
   assert.match(p, /COMPETITION: "PREMIER LEAGUE · 2026\/27"/);
-  assert.match(p, /EMPTY square outline/);
+  assert.match(p, /the club crest from the logo sheet/);
+  assert.match(p, /LEEDS UNITED: its club crest from the logo sheet/);
+  assert.match(p, /COMPETITION LOGO: the official Premier League logo, only if you can reproduce it exactly/);
   assert.match(p, /AI prompt · MUSC/);
   assert.match(posterPrompt(m, { brand: 'musc' }), /HEADLINE: "ONE POINT\. MORE QUESTIONS\."/);
 });
@@ -985,7 +989,12 @@ test('AI prompts: the shape of the story picks the layout and its real style ref
   assert.equal(styleRef(...team).key, 'team');
   const tp = posterPrompt(...team);
   assert.match(tp, /BIG WORD: "SILVER"/);
-  assert.match(tp, /NAMES ROW \(one per column\): "AISHWARY PRATAP SINGH TOMAR \| RUDRANKKSH PATIL \| NIRAJ KUMAR"/);
+  assert.match(tp, /NAMES \(one in front of each athlete\): "AISHWARY PRATAP SINGH TOMAR \| RUDRANKKSH PATIL \| NIRAJ KUMAR"/);
+  assert.match(tp, /PHRASE: "INDIA"/);
+  assert.match(tp, /FLAG: the real INDIA flag from the logo sheet/);
+  const relay = news("India win women's 4x400m relay gold at Asian Games", 'India 3:29.69, Bahrain 3:30.21, China 3:31.02.', { podium: [{ name: 'India', metal: 'gold', value: '3:29.69' }, { name: 'Bahrain', metal: 'silver', value: '3:30.21' }, { name: 'China', metal: 'bronze', value: '3:31.02' }] });
+  assert.equal(styleRef(...relay).key, 'results');
+  assert.match(posterPrompt(...relay), /RESULTS ROW 1: "INDIA \/ GOLD \/ 3:29\.69"[\s\S]*RESULTS ROW 3: "CHINA \/ BRONZE \/ 3:31\.02"[\s\S]*TABLE TITLE: "FINAL RESULTS"/);
   const duo = posterPrompt(...news('Yashvir Singh wins silver, Rohit Yadav bronze in javelin', 'Double podium for India.'));
   assert.match(duo, /HEADLINE: "DOUBLE PODIUM\."/);
   assert.match(duo, /LEFT COLUMN: "YASHVIR SINGH \/ SILVER"[\s\S]*RIGHT COLUMN: "ROHIT YADAV \/ BRONZE"/);
@@ -1005,7 +1014,31 @@ test('AI prompts: the shape of the story picks the layout and its real style ref
     for (const tpl of ['medal-top', 'medal-bottom', 'phrase', 'number', 'quote', 'cream', 'result-photo', 'preview', 'vs', 'tally', 'verdict', 'cover', 'head', 'head-left', 'head-slant', 'matchday', 'result', 'statement', 'signing']) {
       const r = styleRef(team[0], { brand, template: `${brand}-${tpl}`, pinned: true });
       assert.ok(existsSync(new URL(`../public${new URL(r.url).pathname}`, import.meta.url)), r.url);
-      assert.ok(existsSync(new URL(`../public${new URL(r.badge).pathname}`, import.meta.url)), r.badge);
+      assert.match(r.logos, new RegExp(`/api/studio/logos\\?brand=${brand}`));
     }
   assert.match(posterPrompt({ kind: 'match', status: { state: 'post' }, home: { name: 'Manchester United', score: '2' }, away: { name: 'Arsenal', score: '1' }, league: { name: 'Premier League' } }, { brand: 'musc' }), /STYLE REFERENCE for type, colour and grade only[^\n]*musc-matchday\.jpg/);
+});
+
+test('logo sheet: our logo, the competition emblem and the crests, only from feed image hosts', async () => {
+  const { default: logos } = await import('../api/studio/logos.js');
+  const { existsSync } = await import('node:fs');
+  for (const f of ['tsb-wordmark.png', 'musc-crest.png', 'asian-games-2026.png']) assert.ok(existsSync(new URL(`../public/studio/brand/${f}`, import.meta.url)), f);
+  const call = (query) =>
+    new Promise((resolve) => {
+      const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(b) { resolve({ status: this.statusCode, type: this.headers['Content-Type'], body: b }); } };
+      logos({ query }, res);
+    });
+  const realFetch = globalThis.fetch;
+  const asked = [];
+  globalThis.fetch = async (u) => { asked.push(String(u)); return new Response('x', { status: 404 }); };
+  try {
+    const r = await call({ brand: 'tsb', c: 'ASIAN GAMES 2026', t1: 'Leeds United', l1: 'http://169.254.169.254/latest', t2: 'Burnley', l2: 'https://a.espncdn.com/i/teamlogos/soccer/500/379.png' });
+    assert.equal(r.status, 200);
+    assert.equal(r.type, 'image/png');
+    assert.equal(r.body.subarray(1, 4).toString(), 'PNG');
+    assert.ok(!asked.some((u) => u.includes('169.254')), 'only feed image hosts are fetched');
+    assert.ok(asked.some((u) => u.includes('espncdn.com')));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });

@@ -517,7 +517,7 @@ function bind() {
     const n = state.newsVisible?.[Number(b.dataset.copyNews)];
     if (!n) return;
     const ok = await writeClipboard(newsPoster(n, { ...fmtOpts(), brand: b.dataset.brand || 'tsb' }));
-    toast(ok ? 'Copied — paste it into your image AI; attach the real photo and the style reference linked in the prompt' : 'Copy failed');
+    toast(ok ? 'Copied — in your image AI attach the real photo, the style reference and the logo sheet linked in the prompt' : 'Copy failed');
   });
 
   $('#copyAll').addEventListener('click', async () => {
