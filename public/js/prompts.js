@@ -651,7 +651,7 @@ function updatePrompt(item, { words = {}, size = '4:5', when = '', photo = true,
   const year = (item.date ? new Date(item.date) : new Date()).getUTCFullYear();
   const matchLine = isMatch ? `${UP(item.home.abbr || item.home.name)} VS ${UP(item.away.abbr || item.away.name)} ${year}` : UP(w.eyebrow || compLogo(item, w)?.name || item.league?.name || '');
   // the summary's first sentence, when it is short enough to stand as the subline
-  const first = item.kind === 'news' && item.summary ? clean(item.summary).split(/(?<=[.!?])\s/)[0].split(/\s+/) : [];
+  const first = item.kind === 'news' && item.summary ? clean(item.summary).replace(/([.!?])\s.*$/, '$1').split(/\s+/) : [];
   const fromSummary = first.length <= 10 ? first : [];
   const subline = UP(w.kicker || (isMatch ? (item.status?.state === 'pre' ? when : [item.note, item.venue?.name].filter(Boolean).join(' · ')) : w.name || fromSummary.join(' ').replace(/[.,]$/, '')));
   const stats = (w.stats || []).slice(0, 3);

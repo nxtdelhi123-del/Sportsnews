@@ -170,7 +170,14 @@ test('API: /api/news returns deduped headlines', async () => {
   mockFetch();
   const { default: news } = await import('../api/news.js');
   const res = mockRes();
-  await news({ query: {}, headers: {} }, res);
+  // the fixture headlines are dated 16 Oct 2026; news older than three days is dropped
+  const realNow = Date.now;
+  Date.now = () => NOW;
+  try {
+    await news({ query: {}, headers: {} }, res);
+  } finally {
+    Date.now = realNow;
+  }
   const data = JSON.parse(res.body);
   assert.ok(data.items.length >= 3);
   assert.ok(data.sources.ok >= 2);

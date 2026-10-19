@@ -1,3 +1,4 @@
+import { copyOrShow } from './copy.js';
 import { SPORTS, FORMATS, NEWS_ONLY, TIER_LABELS, sportOf, statusLabel, formatMatch, newsPoster, apiUrl } from './format.js';
 
 const REFRESH_MS = 10 * 60_000;
@@ -349,34 +350,9 @@ function renderStatus() {
 }
 
 // ---------- copy ----------
-// Clipboard writes must start inside the click. Passing a promise to ClipboardItem lets
-// us fetch the full match details first and still copy in one tap (Chrome, Safari, Edge).
-async function writeClipboard(textOrPromise) {
-  if (window.ClipboardItem && navigator.clipboard?.write) {
-    try {
-      const blob = Promise.resolve(textOrPromise).then((t) => new Blob([t], { type: 'text/plain' }));
-      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]);
-      return true;
-    } catch {
-      /* fall through */
-    }
-  }
-  const text = await textOrPromise;
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand('copy');
-    ta.remove();
-    return ok;
-  }
-}
+// Clipboard writes must start inside the tap (public/js/copy.js); when a browser refuses,
+// the text opens in a sheet so it can still be copied.
+const writeClipboard = (textOrPromise, title) => copyOrShow(textOrPromise, title);
 
 let toastTimer;
 function toast(msg) {
@@ -416,7 +392,7 @@ async function copyMatch(m, btn) {
     btn.innerHTML = label;
     btn.classList.remove('done');
   }, 1800);
-  toast(ok ? `Copied ${fmtLabel(fmt)} — paste it into your AI` : 'Copy failed — use Formats to select the text');
+  toast(ok ? `Copied ${fmtLabel(fmt)} — paste it into your AI` : 'Your browser blocked copying — tap Copy in the box');
 }
 
 let dialogMatch = null;
@@ -517,7 +493,7 @@ function bind() {
     const n = state.newsVisible?.[Number(b.dataset.copyNews)];
     if (!n) return;
     const ok = await writeClipboard(newsPoster(n, { ...fmtOpts(), brand: b.dataset.brand || 'tsb' }));
-    toast(ok ? 'Copied — in your image AI attach the real photo, the style reference and the logo sheet linked in the prompt' : 'Copy failed');
+    toast(ok ? 'Copied — in your image AI attach the real photo, the style reference and the logo sheet linked in the prompt' : 'Your browser blocked copying — tap Copy in the box');
   });
 
   $('#copyAll').addEventListener('click', async () => {
@@ -526,7 +502,7 @@ function bind() {
     const sep = state.format === 'json' ? null : '\n\n════════════════════════\n\n';
     const text = sep === null ? JSON.stringify(list, null, 2) : list.map((m) => formatMatch(m, state.format, fmtOpts())).join(sep);
     const ok = await writeClipboard(text);
-    toast(ok ? `Copied ${list.length} matches` : 'Copy failed');
+    toast(ok ? `Copied ${list.length} matches` : 'Your browser blocked copying — tap Copy in the box');
   });
 
   $('#formatTabs').addEventListener('click', (e) => {
@@ -537,7 +513,7 @@ function bind() {
   });
   $('#dialogCopy').addEventListener('click', async () => {
     const ok = await writeClipboard($('#codeBox').textContent);
-    toast(ok ? `Copied ${fmtLabel(dialogFormat)}` : 'Copy failed');
+    toast(ok ? `Copied ${fmtLabel(dialogFormat)}` : 'Your browser blocked copying — tap Copy in the box');
   });
 
   $('#refreshBtn').addEventListener('click', () => load({ bust: true }));
