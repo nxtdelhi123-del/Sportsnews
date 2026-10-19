@@ -12,17 +12,23 @@ const NOT_NAMES = /^(Asian Games|Premier League|World Cup|Nations League|Champio
 const NATIONS = /^(india|pakistan|england|spain|france|germany|italy|portugal|netherlands|belgium|brazil|argentina|uruguay|mexico|usa|united states|japan|south korea|korea|australia|new zealand|south africa|sri lanka|bangladesh|afghanistan|west indies|ireland|scotland|wales|norway|sweden|denmark|croatia|serbia|switzerland|poland|morocco|senegal|nigeria|ghana|egypt|iran|china|qatar|saudi arabia|turkey|türkiye|colombia|chile|canada|nepal|zimbabwe)( men| women)?$/i;
 export const isNationTeam = (t) => NATIONS.test(String(t?.name || '').trim());
 const scorer = (p = '') => String(p).split(' / ')[0].replace(/\s*\(.*\)/, '').trim();
-const PHOTO_LAYOUTS = new Set(['medal-top', 'medal-bottom', 'phrase', 'number', 'quote', 'result-photo', 'preview', 'vs', 'verdict', 'side-panel', 'team', 'table', 'scores', 'duo', 'head', 'head-left', 'head-slant', 'matchday', 'result', 'signing']);
-const METAL_LAYOUTS = new Set(['medal-top', 'medal-bottom', 'phrase', 'number', 'tally', 'cover', 'side-panel', 'team', 'scores', 'duo']);
+const PHOTO_LAYOUTS = new Set(['medal-top', 'medal-bottom', 'phrase', 'number', 'quote', 'result-photo', 'preview', 'vs', 'verdict', 'side-panel', 'team', 'results', 'table', 'scores', 'duo', 'head', 'head-left', 'head-slant', 'matchday', 'result', 'signing']);
+const METAL_LAYOUTS = new Set(['medal-top', 'medal-bottom', 'phrase', 'number', 'tally', 'cover', 'side-panel', 'team', 'results', 'scores', 'duo']);
 // Where the style references and badges live. Image AIs copy an attached real post far
 // more faithfully than any description, so every prompt names one to attach.
 const SITE = typeof location !== 'undefined' && /^https:/.test(location.origin) && !/localhost|127\.0/.test(location.host) ? location.origin : 'https://sportsnews-delta.vercel.app';
 // One real post per layout (public/studio/refs/<brand>-<layout>.jpg).
 const REFS = {
-  tsb: ['medal-top', 'medal-bottom', 'phrase', 'number', 'quote', 'cream', 'result-photo', 'preview', 'vs', 'tally', 'verdict', 'cover', 'side-panel', 'team', 'table', 'scores', 'duo'],
+  tsb: ['medal-top', 'medal-bottom', 'phrase', 'number', 'quote', 'cream', 'result-photo', 'preview', 'vs', 'tally', 'verdict', 'cover', 'side-panel', 'team', 'results', 'table', 'scores', 'duo'],
   musc: ['head', 'head-slant', 'matchday', 'signing'],
 };
-const BADGES = { tsb: '/studio/brand/tsb-badge.png', musc: '/studio/brand/musc-crest.png' };
+// Real logos the logo sheet (api/studio/logos.js) puts in front of the AI.
+export const BRAND_LOGOS = {
+  tsb: { file: '/studio/brand/tsb-wordmark.png', what: 'our wordmark — "THE" in white with a thin white rule running right of it, "SPORTS" in white heavy high-contrast Didone capitals, "BINGE" under it in gold at the same width, "ONLINE MAGAZINE" in tiny widely spaced white capitals under that; a tight flush-left block about 20% of the poster width' },
+  musc: { file: '/studio/brand/musc-crest.png', what: 'our round crest, about 110px across' },
+};
+export const COMP_LOGOS = [{ re: /asian games|aichi|nagoya/i, file: '/studio/brand/asian-games-2026.png', name: 'ASIAN GAMES 2026' }];
+const NATION_IN = new RegExp(`\\b(${NATIONS.source.replace(/^\^\(|\)\( men\| women\)\?\$$/g, '')})\\b`, 'i');
 
 export const BRAND_INFO = {
   tsb: { name: 'The Sports Binge', handle: '@thesportsbinge' },
@@ -98,19 +104,20 @@ export function headlineFor(item, kind, brand = 'tsb') {
 // Every layout is a concrete brief: where things sit, in what type, at what size.
 const TSB_LAYOUTS = {
   'medal-top': {
-    title: 'Medal post — name on top',
+    title: 'Medal post — name and metal on top',
     layout: [
-      'Background: near-black (#141414) at the top, the photo rising into it from below. Competition logo space top-right (an empty square, I add the Games logo); badge space bottom-left.',
-      'Top 4–7%, left-aligned at a 4% margin: the first name in small widely spaced white serif capitals.',
-      'From 7% to 31% down, left-aligned: the TOP LINE (surname) in white condensed Didone capitals, then the BIG WORD directly under it in brushed metal, both filling the width to a 4% margin; the big word ~1.6x the height of the top line.',
-      'Under it, one row: on the left the EVENT in spaced serif capitals over the competition in tiny caps; a thin vertical white rule; on the right the result (time / distance) in a white condensed serif, right-aligned.',
-      'From 38% down to the bottom: the athlete from the photo, holding the flag wide or celebrating, filling the frame edge to edge; the flag’s colours run across behind them.',
+      'Background: the photo of the athlete at the moment of the result (arms up, shouting), the venue soft and dark behind, filling the frame; the top 30% darkened so the type reads.',
+      'From 4% to 30% down, centred: the TOP LINE (the name) in white condensed Didone capitals, then the BIG WORD directly under it in a textured metal leaf (copper for bronze, gold leaf for gold, brushed silver for silver), both filling the width to a 4% margin; the big word ~1.4x the height of the name.',
+      'Directly under it: the EVENT in widely spaced white capitals.',
+      'At 45–52% down: the brand logo on the left edge and the competition logo in a white circle on the right edge, both ~11% of the width.',
+      'Bottom-left from 70% down: the result big in a white bold sans ("1.84M"), then 4–5 short lines of white spaced capitals saying what happened, then a short copper/gold rule.',
+      'Bottom-right: a real medal of that metal, angled slightly, ~18% of the width, with the competition name engraved small.',
     ],
   },
   'medal-bottom': {
     title: 'Medal post — metal word at the foot',
     layout: [
-      'Top 0–62%: the photo, the athlete mid-action (throw, shout, celebration) in the upper half, cropped tight. Badge space top-left, competition logo space top-right.',
+      'Top 0–62%: the photo, the athlete mid-action (throw, shout, celebration) in the upper half, cropped tight. Brand logo top-left, competition logo top-right.',
       'From 58% to 84% down, centred: the TOP LINE (name) in white condensed Didone capitals, then the BIG WORD in brushed metal, both filling the width to a 4% margin, sitting on the photo’s dark gradient.',
       'Footer row (bottom 12%) on near-black, three columns split by thin vertical white rules: left — the event in tiny spaced caps over the result in a gold serif ("17.17m"); centre — 2 lines of tiny spaced caps saying what happened; right — the country in tiny caps over a small real flag.',
     ],
@@ -119,7 +126,7 @@ const TSB_LAYOUTS = {
     title: 'Medal / stage post — text panel on the left',
     layout: [
       'Background: the photo of the athlete in action on the right two-thirds, with a large black-and-white close-up of the same athlete faded into the dark background top-right (a double exposure). Left third darkened to near-black.',
-      'Top-left: the competition in tiny spaced caps, 2 lines. Competition logo space top-right; badge space bottom-right.',
+      'Top-left: the competition in tiny spaced caps, 2 lines. Competition logo top-right; brand logo bottom-right.',
       'From 8% to 36% down, left-aligned at a 4% margin: the TOP LINE (name, 1–2 lines) in white condensed Didone capitals, then the BIG WORD in brushed metal under it, ~60% of the width; the EVENT in spaced caps under that.',
       'Left column from 44% down, behind a thin vertical white rule: stat blocks stacked — each a big number in a white condensed sans ("2:11:37") over 2 lines of tiny spaced caps; the second block’s number larger and in pale blue or gold ("44 YEARS") with a bold small-caps line above it.',
       'The athlete overlaps the panel slightly, never covering its text.',
@@ -128,7 +135,7 @@ const TSB_LAYOUTS = {
   phrase: {
     title: 'Medal phrase post',
     layout: [
-      'Top 0–58%: the photo of the athlete(s) in action, fading into near-black at its foot. Badge space top-left, competition logo space top-right.',
+      'Top 0–58%: the photo of the athlete(s) in action, fading into near-black at its foot. Brand logo top-left, competition logo top-right.',
       'From 56% to 82%: the PHRASE in 2–3 lines, centred, each line filling the width (4% margins) in a condensed Didone: the first line in white and largest, the following lines in brushed gold/bronze, every sentence ending in a full stop.',
       'Under it: the athlete’s name in widely spaced white serif capitals, then one line of gold spaced caps with the key facts split by dots ("54.75 · NATIONAL RECORD · BRONZE").',
       'Very bottom: 2 lines of tiny spaced caps with the event and competition.',
@@ -141,14 +148,14 @@ const TSB_LAYOUTS = {
       'Top 5%: the athlete’s name in widely spaced small white caps.',
       'From 7% to 28%: the NUMBER in a wide high-contrast Didone, brushed gold, filling ~86% of the width.',
       'Under it: the UNIT in white condensed serif capitals, then the KICKER in small spaced caps.',
-      'Left column from 45% down: badge space, then a supporting number in gold serif with a tiny caps label over and under it; then a small comparison block (a small photo square + a second number).',
+      'Left column from 45% down: brand logo, then a supporting number in gold serif with a tiny caps label over and under it; then a small comparison block (a small photo square + a second number).',
       'Bottom 10%: a row of three stats split by thin vertical rules — each a gold serif number with 2 lines of tiny caps beside it.',
     ],
   },
   quote: {
     title: 'Quote post',
     layout: [
-      'Top 0–58%: the portrait, face fully visible, looking off-frame. Badge space top-left.',
+      'Top 0–58%: the portrait, face fully visible, looking off-frame. Brand logo top-left.',
       'From 58% down: a large gold opening quote mark, then the QUOTE in 3–4 lines of semi-condensed serif, sentence case; the middle line in gold, the rest in white.',
       'Under it: the speaker’s name in widely spaced small caps, then a smaller second quote in a light serif.',
       'Bottom: a thin rule, the context on the left ("ON THE …"), the handle on the right, both tiny spaced caps.',
@@ -161,7 +168,7 @@ const TSB_LAYOUTS = {
       'Top: the competition and season in tiny spaced caps between two hairlines.',
       'Then the masthead "THE SPORTS BINGE" in a tall condensed newspaper serif, navy (#0F1B33), filling the full width, with a rule under it.',
       'Centre: the HEADLINE in 2 lines, heavy semi-condensed serif, sentence case, centred, navy.',
-      'The STATUS LABEL in spaced caps between hairlines, then a row: team 1 mark · the score "X–Y" huge in navy serif · team 2 mark, separated by thin vertical rules (team marks: the real rectangular flag for a national team; for a club, an EMPTY square outline the size of a flag where I place the crest). Team names in spaced caps under the marks; each team’s scorers with minutes in small serif under that team.',
+      'The STATUS LABEL in spaced caps between hairlines, then a row: team 1 mark · the score "X–Y" huge in navy serif · team 2 mark, separated by thin vertical rules (team marks: the real flag for a national team, the club crest from the logo sheet for a club, both the same height). Team names in spaced caps under the marks; each team’s scorers with minutes in small serif under that team.',
       'Bottom: the round/group in spaced caps between hairlines, then the handle.',
     ],
   },
@@ -169,9 +176,9 @@ const TSB_LAYOUTS = {
     title: 'Result over a photo',
     layout: [
       'Full-bleed photo of the scorer celebrating, right half of the frame, the stadium dark behind.',
-      'Top-left: competition in tiny spaced caps. Badge space top-right.',
+      'Top-left: competition in tiny spaced caps. Brand logo top-right.',
       'From 6% to 24%: the HEADLINE in 2 lines of cream condensed serif capitals, left-aligned, filling ~85% of the width, ending in a full stop.',
-      'Left column under it: the KICKER in 3 short lines of white serif (sentence case), then each team stacked: a real flag (or an empty square for a club crest) beside a big white serif score, team name in tiny caps under; then the scorers with minutes in a small list.',
+      'Left column under it: the KICKER in 3 short lines of white serif (sentence case), then each team stacked: a real flag or the club crest from the logo sheet beside a big white serif score, team name in tiny caps under; then the scorers with minutes in a small list.',
     ],
   },
   preview: {
@@ -186,7 +193,7 @@ const TSB_LAYOUTS = {
   vs: {
     title: 'Cream VS post',
     layout: [
-      'Top 62%: cream paper. Real flags of both nations drape in from the left and right edges, partly cut off. Badge space top-left, competition logo space top-right.',
+      'Top 62%: cream paper. Real flags of both nations drape in from the left and right edges, partly cut off. Brand logo top-left, competition logo top-right.',
       'Team 1 name huge in a condensed Didone in deep navy, a small spaced "vs" in muted grey, team 2 name huge in deep navy — each filling ~70% of the width, centred between the flags.',
       'Under them: the stage ("SEMI-FINAL") in widely spaced serif capitals, the date in small caps, then two short fact columns split by a vertical rule.',
       'Bottom 38%: a real photo of the venue or the ball/equipment on the field, shallow depth of field, fading into the cream at its top edge.',
@@ -212,21 +219,32 @@ const TSB_LAYOUTS = {
     ],
   },
   team: {
-    title: 'Team medal — the squad and one huge word',
+    title: 'Team medal — the squad, one huge word, the podium row',
     layout: [
-      'Background: dark, the venue blurred behind. Competition in tiny spaced caps top-left; badge space top-right; competition logo space under the competition.',
-      'From 12% to 18%: the EVENT in widely spaced serif capitals, 2 lines, centred.',
-      'From 20% to 72%: the team from the photo standing side by side with their medals, waist up, evenly spaced.',
-      'From 60% to 80%: the BIG WORD huge in brushed metal across the full width (3% margins), overlapping the athletes’ waists, with a soft dark shadow.',
-      'A TOP LINE, if given, sits just above the big word in small white spaced caps.',
-      'Under it: one line of spaced caps saying what happened, then the NAMES ROW — one name per column in tiny spaced caps, the columns split by thin vertical rules.',
-      'Very bottom: a painted sweep of the country’s flag colours across the width.',
+      'Background: the team from the photo standing side by side in the top 58%, waist up, confident, against the venue under a blue sky; the country name huge and faint, rotated vertically along the left edge.',
+      'Brand logo top-left; competition logo in a white circle top-right.',
+      'In front of each athlete at chest height: their first and last name in small white bold capitals (2 lines), a thin rule, and their score in a white serif under it.',
+      'From 58% to 74%: the BIG WORD huge in brushed metal across the full width (3% margins); under it the PHRASE (if given) in white condensed Didone capitals at the same width; then a thin tricolour hairline.',
+      'Under it: 2 lines of widely spaced white capitals saying what happened, centred.',
+      'Bottom 16%: three columns split by thin vertical rules — each a big white serif score, the country in small caps, and a small metal pill (gold / silver / bronze bar with the word in dark capitals).',
+      'Very bottom: one line of tiny spaced caps with context.',
+    ],
+  },
+  results: {
+    title: 'Medal post with a results table',
+    layout: [
+      'Top 0–55%: the athlete from the photo holding the flag wide behind them, smiling, cropped at the waist. THE SPORTS BINGE in tiny spaced caps with a thin vertical bar top-left, the competition in tiny spaced caps top-right with a short rule under it.',
+      'Brand logo on the left and the competition logo in a white circle on the right at 12–20% down.',
+      'From 46% to 60%: the TOP LINE in white condensed Didone capitals, left, with the EVENT in widely spaced white capitals beside it on the right (2 lines, a short gold rule under).',
+      'From 60% to 82%: the BIG WORD huge in textured gold leaf (or silver / copper), filling the full width (2% margins).',
+      'Bottom 30%: a photo of the race finish (the track, the other athletes), with a short gold rule and 3 lines of white sans on the left saying what happened.',
+      'Bottom-right: a black panel "FINAL RESULTS" in gold spaced caps, three rows split by hairlines — a round medal-coloured number chip (1 gold, 2 silver, 3 bronze), a small real flag, the country in white bold caps, the time right-aligned (the winner’s in gold).',
     ],
   },
   duo: {
     title: 'Two medals — two athletes, two columns',
     layout: [
-      'Top 0–58%: the two athletes from the photo side by side in action, the stadium lit behind. Badge space top-left, competition in tiny caps top-centre, competition logo space top-right.',
+      'Top 0–58%: the two athletes from the photo side by side in action, the stadium lit behind. Brand logo top-left, competition in tiny caps top-centre, competition logo top-right.',
       'From 50% to 76%: the HEADLINE in 2 lines of brushed gold condensed Didone, centred, each line filling the width.',
       'Under it: one spaced line in white caps with a small real flag at its end.',
       'Bottom 20%: two columns split by a thin vertical rule — each: the athlete’s name in tiny spaced caps, their medal word in its own metal (silver / bronze / gold), the result under it in white condensed type.',
@@ -241,7 +259,7 @@ const TSB_LAYOUTS = {
       'From 40% to 66%: the HEADLINE in 2 lines, centred: line 1 white, line 2 brushed gold, each filling the width.',
       'Under it: the KICKER in 2 lines of spaced white caps.',
       'Then two panels side by side split by a thin rule: each has a label in gold spaced caps ("WOMEN" / "MEN") over a row "TEAM  48–24  TEAM" with the score in gold.',
-      'Under them: one line of tiny caps, then a thin gold-outlined pill with a date line. Badge space bottom-left, competition logo space bottom-right.',
+      'Under them: one line of tiny caps, then a thin gold-outlined pill with a date line. Brand logo bottom-left, competition logo bottom-right.',
     ],
   },
   table: {
@@ -260,7 +278,7 @@ const TSB_LAYOUTS = {
       'Warm paper background with faint texture. No photo.',
       'A meta row at the top: place on the left, series name on the right, tiny caps, hairline under.',
       'Two blocks of stacked condensed serif capitals in near-black; the key word of each block on its own line, larger, in brushed bronze. A short saffron-white-green dash between the blocks.',
-      'Bottom: 2–3 lines of tiny spaced caps on the left, badge space and a thin arrow on the right.',
+      'Bottom: 2–3 lines of tiny spaced caps on the left, brand logo and a thin arrow on the right.',
     ],
   },
 };
@@ -270,7 +288,7 @@ const MUSC_LAYOUTS = {
     layout: [
       'Full-bleed photo, graded red: shadows pushed to maroon, a deep red-to-black fade over the bottom 45%.',
       'Bottom: a label in condensed bold capitals between two red rules, then the HEADLINE one word per line (2–4 lines), each line filling the width, in an ultra-condensed heavy grotesque, cream #F3E6D0 with slight texture; any accent word in red #DA291C.',
-      'Badge space top-left.',
+      'Brand logo top-left.',
     ],
   },
   'head-left': {
@@ -292,7 +310,7 @@ const MUSC_LAYOUTS = {
     title: 'Matchday',
     layout: [
       'Split background: United red on the left, the opponent’s colour on the right. One player from each side, facing each other, filling the top 60%.',
-      'Top-centre: the competition badge area and the round in small caps.',
+      'Top-centre: the competition logo and the round in small caps.',
       'Lower third: crest · "VS" · crest with team names under each in small caps.',
       'Then the date and time in big yellow (#FFD23F) condensed capitals, the venue small, and "WATCH LIVE ONLY ON" in white with "FANCODE" in orange #FF7A1A italic.',
     ],
@@ -311,7 +329,7 @@ const MUSC_LAYOUTS = {
       'A red poster panel (#B2160E with a soft radial highlight) inset on near-black, a thin cream inner border.',
       'Top: "MATCHDAY" small above the panel.',
       'Upper half of the panel: the STATEMENT in 2 lines of ultra-condensed heavy capitals, cream with a subtle print texture, filling the width.',
-      'Under it: the fixture "MANCHESTER UNITED V OPPONENT" in spaced caps, the competition and date smaller; badge space at the bottom centre.',
+      'Under it: the fixture "MANCHESTER UNITED V OPPONENT" in spaced caps, the competition and date smaller; brand logo at the bottom centre.',
     ],
   },
   signing: {
@@ -329,7 +347,8 @@ const MUSC_LAYOUTS = {
 function shapeOf(kind, words, item) {
   if (item.kind !== 'news') return '';
   const t = `${item.title || ''} ${item.summary || ''}`;
-  if (kind === 'medal' && /\b(team|relay|trio|squad|4\s*[x×]\s*\d{3})\b/i.test(t)) return 'team';
+  if (kind === 'medal' && /\b(team|trio|squad)\b/i.test(t) && !/\brelay\b/i.test(t)) return 'team';
+  if (kind === 'medal' && (/\b(relay|4\s*[x×]\s*\d{3})\b/i.test(t) || (words.podium || []).length >= 3)) return 'results';
   if ((kind === 'medal' || kind === 'milestone') && ((words.podium || []).length >= 2 || /\b(double podium|one-two|1-2 finish)\b/i.test(t) || (namesIn(item.title).length >= 2 && (t.match(/\b(gold|silver|bronze)\b/gi) || []).length >= 2))) return 'duo';
   if (/\b(two|both)\b[^.]{0,30}\bfinals?\b|\btwo golds\b/i.test(t) && scoresIn(t).length >= 2) return 'scores';
   if (/\b(on pole|pole position|qualifying|grid|standings|leaderboard)\b/i.test(t) && (words.stats || []).length >= 2) return 'table';
@@ -365,12 +384,13 @@ function textLines(brand, key, words, item, when) {
   const add = (label, s) => s && W.push(`${label}: "${clean(s)}"`);
   const head = clean(words.headline);
   const parts = head.split(/\s+/);
-  const isMetalTier = /^(medal-(top|bottom)|side-panel|team)$/.test(key) && parts.length >= 2 && METAL.test(parts[parts.length - 1]);
+  const isMetalTier = /^(medal-(top|bottom)|side-panel|results)$/.test(key) && parts.length >= 2 && METAL.test(parts[parts.length - 1]);
   if (isMetalTier || (/^medal-(top|bottom)$/.test(key) && parts.length >= 2)) {
     add('TOP LINE', parts.slice(0, -1).join(' '));
     add('BIG WORD', parts[parts.length - 1].replace(/\.$/, ''));
   } else if (key === 'team' && METAL.test(head)) {
     add('BIG WORD', UP(head.match(METAL)[1]));
+    add('PHRASE', head.replace(METAL, '').replace(/\s+/g, ' ').replace(/^[\s.]+|[\s.]+$/g, ''));
   } else if (key === 'number') {
     add('NUMBER', parts[0]);
     add('UNIT', parts.slice(1).join(' ').replace(/\.$/, ''));
@@ -397,8 +417,10 @@ function textLines(brand, key, words, item, when) {
   if (key === 'team') {
     const names = (words.podium || []).map((p) => p.name).filter(Boolean);
     const list = names.length >= 2 ? names : namesIn(story);
-    if (list.length >= 2) add('NAMES ROW (one per column)', list.map(UP).join(' | '));
+    if (list.length >= 2) add('NAMES (one in front of each athlete)', list.map(UP).join(' | '));
   }
+  if (key === 'team' || key === 'results')
+    (words.podium || []).slice(0, 3).forEach((p, i) => add(key === 'team' ? `PODIUM COLUMN ${i + 1}` : `RESULTS ROW ${i + 1}`, `${UP(p.name)} / ${UP(p.metal)}${p.value ? ' / ' + p.value : ''}`));
   if (key === 'duo') {
     const pod = (words.podium || []).slice(0, 2);
     if (pod.length === 2) pod.forEach((p, i) => add(i ? 'RIGHT COLUMN' : 'LEFT COLUMN', `${UP(p.name)} / ${UP(p.metal)}${p.value ? ' / ' + p.value : ''}`));
@@ -411,7 +433,7 @@ function textLines(brand, key, words, item, when) {
   }
   if (key === 'scores') scoresIn(story).forEach((x, i) => add(`SCORE PANEL ${i + 1}`, x));
   for (const st of (words.stats || []).slice(0, key === 'table' ? 4 : 3)) add(key === 'table' ? 'TABLE ROW' : 'STAT', `${st.value} — ${st.label}`);
-  if (key !== 'duo' && key !== 'team') for (const p of words.podium || []) add('PODIUM', `${p.name}: ${UP(p.metal)}${p.value ? ' ' + p.value : ''}`);
+  if (!['duo', 'team', 'results'].includes(key)) for (const p of words.podium || []) add('PODIUM', `${p.name}: ${UP(p.metal)}${p.value ? ' ' + p.value : ''}`);
   if (words.big) add('TOTAL', words.big);
   if (item.kind !== 'news' && !words.eyebrow) {
     const d = item.date ? new Date(item.date) : null;
@@ -425,6 +447,7 @@ function textLines(brand, key, words, item, when) {
     vs: [['SMALL WORD BETWEEN THE NAMES', 'vs']],
     tally: [['UNDER THE TOTAL', 'TOTAL MEDALS']],
     verdict: [['TAG', 'BREAKING REPORT']],
+    results: [['SMALL MASTHEAD', 'THE SPORTS BINGE'], ['TABLE TITLE', 'FINAL RESULTS']],
     result: [['TAG', status]],
     'result-photo': [],
     statement: [['ABOVE THE PANEL', 'MATCHDAY']],
@@ -451,8 +474,8 @@ const NOT_AI = [
   'Make it look like a real post designed in Photoshop by a sports media page and shot by an agency photographer — NOT like AI art.',
   'Photo: real editorial sports photography (Getty / Reuters / AP style), 70–200mm telephoto look, natural skin texture with pores, real sweat and fabric folds, real stadium light and crowd bokeh, correct hands and fingers, correct kit, correct equipment.',
   'Do NOT add: plastic or airbrushed skin, glowing outlines, lens flares, sparkles, lightning, smoke, motion streaks, neon, 3D chrome text, bevel/emboss, fantasy backgrounds, extra people, duplicated limbs, warped numbers on shirts, made-up sponsor logos, made-up text anywhere.',
-  'Text: render ONLY the words listed under TEXT, spelled exactly, in the places described. No other words, no lorem ipsum, no watermark. Every letter crisp and evenly spaced.',
-  'Logos and badges: do NOT draw or imitate any brand badge, club crest, competition logo or sponsor mark. If I attached our badge, place that exact image, unchanged, in the badge space (a circle about 110px across); otherwise leave the badge space as a clean empty circle — I add the real logo myself. Competition logo spaces stay empty.',
+  'Text: render ONLY the words listed under TEXT (plus the lettering inside the real logos), spelled exactly, in the places described. No other words, no lorem ipsum, no watermark. Every letter crisp and evenly spaced.',
+  'Logos: only the real ones from the attached logo sheet, each copied exactly — same shapes, colours, letters and proportions, crisp edges, no redrawing. Never invent, approximate or add a logo, and no sponsor marks beyond those already on the real photo.',
   'Grid discipline: keep text inside a 48px safe margin, align everything to a clear grid, vary sizes strongly (one huge word, the rest small) — no evenly-sized blocks of text.',
 ];
 
@@ -465,6 +488,40 @@ function planFor(item, { brand = 'tsb', words = {}, template = '', pinned = fals
   return { kind, w, key };
 }
 
+// The logo sheet for a story: our logo, the competition's (when we have it) and the two
+// teams' crests or flags (or the nation a medal story is about).
+export function logoSheetUrl(item, { brand = 'tsb', words = {} } = {}) {
+  const q = new URLSearchParams({ brand });
+  const known = compLogo(item, words);
+  if (known) q.set('c', known.name);
+  if (item.kind !== 'news' && item.home && item.away) {
+    [item.home, item.away].forEach((t, i) => {
+      q.set(`t${i + 1}`, t.name || '');
+      if (t.logo) q.set(`l${i + 1}`, t.logo);
+    });
+  } else {
+    const nation = words.country || (`${item.title || ''}`.match(NATION_IN) || [])[1];
+    if (nation) q.set('t1', nation.replace(/\b\w/g, (c) => c.toUpperCase()));
+  }
+  return `${SITE}/api/studio/logos?${q}`;
+}
+const compLogo = (item, words = {}) => COMP_LOGOS.find((c) => c.re.test(item.kind === 'news' ? `${words.eyebrow || ''} ${item.title || ''} ${item.summary || ''}` : `${item.league?.name || ''} ${item.note || ''}`));
+
+// What the LOGOS section of a prompt says goes where.
+function logoLines(item, brand, words) {
+  const L = [`• BRAND LOGO: ${BRAND_LOGOS[brand].what}. It is on the logo sheet; reproduce it exactly where the LAYOUT says "brand logo" (top-left if it doesn't say).`];
+  const known = compLogo(item, words);
+  if (known) L.push(`• COMPETITION LOGO: the ${known.name} emblem from the logo sheet, on a white circle, where the LAYOUT says "competition logo".`);
+  else if (item.kind !== 'news' && /league|cup|liga|serie a|bundesliga|ligue|premier|champions|olympic|\bipl\b|\bwpl\b|\bnba\b|\bnfl\b/i.test(item.league?.name || '')) L.push(`• COMPETITION LOGO: the official ${item.league.name} logo, only if you can reproduce it exactly; otherwise leave it out (no empty circle).`);
+  else L.push('• COMPETITION LOGO: none for this story — leave it out (no empty circle).');
+  const nation = item.kind === 'news' && (words.country || (`${item.title || ''}`.match(NATION_IN) || [])[1]);
+  if (nation) L.push(`• FLAG: the real ${UP(nation)} flag from the logo sheet, wherever the LAYOUT shows a flag.`);
+  if (item.kind !== 'news' && item.home && item.away)
+    for (const t of [item.home, item.away]) L.push(`• ${UP(t.name)}: ${isNationTeam(t) ? 'its real national flag' : 'its club crest'} from the logo sheet, wherever the LAYOUT shows that team's flag or crest.`);
+  L.push('• Do not draw the logo sheet itself: no grey tiles, labels or heading from it.');
+  return L;
+}
+
 // The real post to attach as a style reference for this story's layout.
 // `exact` is false when the brand has no post in that layout and a close one stands in.
 export function styleRef(item, opts = {}) {
@@ -472,7 +529,7 @@ export function styleRef(item, opts = {}) {
   const { key } = planFor(item, opts);
   const exact = REFS[brand].includes(key);
   const near = exact ? key : brand === 'musc' ? (key === 'result' ? 'matchday' : 'head') : 'medal-bottom';
-  return { key, exact, url: `${SITE}/studio/refs/${brand}-${near}.jpg`, badge: `${SITE}${BADGES[brand]}` };
+  return { key, exact, url: `${SITE}/studio/refs/${brand}-${near}.jpg`, logos: logoSheetUrl(item, opts) };
 }
 
 // The full prompt. `photo` says whether the owner will attach a real photo; `pinned`
@@ -500,7 +557,7 @@ export function posterPrompt(item, { brand = 'tsb', words = {}, template = '', s
     ref.exact
       ? `• Image ${usesPhoto ? 2 : 1} — STYLE REFERENCE, a real ${info.handle} post in this exact layout: ${ref.url}`
       : `• Image ${usesPhoto ? 2 : 1} — STYLE REFERENCE for type, colour and grade only (a real ${info.handle} post; the layout below differs): ${ref.url}`,
-    `• Image ${usesPhoto ? 3 : 2} (optional) — our badge: ${ref.badge}`,
+    `• Image ${usesPhoto ? 3 : 2} — LOGO SHEET, our real logos for this post: ${ref.logos}`,
     '',
     'STYLE REFERENCE RULES:',
     ref.exact
@@ -508,6 +565,9 @@ export function posterPrompt(item, { brand = 'tsb', words = {}, template = '', s
       : '• Match the style reference’s typefaces, colours, metal finish, photo grade and finish; follow the LAYOUT below for positions.',
     '• Copy NOTHING else from it: none of its words, numbers, people, flags or logos. All words come from TEXT; the person comes from the real photo.',
     '• If the reference and this prompt disagree on words, this prompt wins; on look and finish, the reference wins.',
+    '',
+    'LOGOS (from the logo sheet — copy exactly, never redraw or invent):',
+    ...logoLines(item, brand, w),
     '',
     'PHOTO:',
     !usesPhoto
@@ -520,7 +580,7 @@ export function posterPrompt(item, { brand = 'tsb', words = {}, template = '', s
     `LAYOUT — ${L.title}:`,
     ...L.layout.map((x) => `• ${x}`),
     '',
-    'TEXT (exact words, exact spelling — nothing else):',
+    'TEXT (exact words, exact spelling — nothing else; any text spot in the LAYOUT with no line here is left out, never filled with made-up words or numbers):',
     ...textLines(brand, key, w, item, when).map((x) => `• ${x}`),
     '',
     'LOOK:',
@@ -529,7 +589,7 @@ export function posterPrompt(item, { brand = 'tsb', words = {}, template = '', s
     'MUST NOT LOOK AI-GENERATED:',
     ...NOT_AI.map((x) => `• ${x}`),
     '',
-    'BEFORE YOU FINISH, CHECK: it could sit next to the style reference on the grid and look like the same designer made both; every word matches the TEXT list letter for letter; no extra text; faces untouched; hands and numbers correct; the badge space holds only our attached badge or nothing; nothing is cropped at the edges.',
+    'BEFORE YOU FINISH, CHECK: it could sit next to the style reference on the grid and look like the same designer made both; every word matches the TEXT list letter for letter; no extra text; faces untouched; hands and numbers correct; every logo matches the logo sheet exactly and none is invented; nothing is cropped at the edges.',
   ];
   return out.filter((x) => x !== null).join('\n');
 }

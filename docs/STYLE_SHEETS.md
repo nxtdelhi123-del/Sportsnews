@@ -100,13 +100,27 @@ fonts are identified by shape and matched with free Google Fonts.
     white/team-colour headline, a four-row results table with position chips, the car
     bottom-left and a second driver with a big "P16" bottom-right.
 
+16. **Results table** (INDIA GOLD — women's 4×400m relay): athlete with the flag in the top
+    half, THE SPORTS BINGE small top-left, INDIA in white with the event beside it, GOLD
+    huge in gold leaf, the race finish below, a black FINAL RESULTS panel with medal number
+    chips, flags and times.
+
+### Logos
+The brand logo is the wordmark — THE (with a rule) / SPORTS in white / BINGE in gold /
+ONLINE MAGAZINE — redrawn at full size from the shipped Bodoni Moda Black and Montserrat
+(`scripts/make-wordmark.mjs` → `public/studio/brand/tsb-wordmark.png`). Asian Games posts
+carry the Aichi-Nagoya emblem in a white circle (`asian-games-2026.png`, cut from the
+page's own posts). `/api/studio/logos` puts our logo, the competition emblem and the two
+teams' crests or flags on one labelled sheet that every AI prompt links.
+
 ### Headlines
 2–6 words, a full stop, capitals except editorial results/previews (sentence case).
 
 ### Style references for image AIs
 One real post per layout lives in `public/studio/refs/<brand>-<layout>.jpg` (contact sheet:
-`docs/style-refs.jpg`), cut from the owner's grid screenshots of 18 Oct 2026 with
-Instagram's overlay icons painted out. Every AI prompt names the one for its layout and
+`docs/style-refs.jpg`), cut from the owner's screenshots of 18–19 Oct 2026 with
+Instagram's overlay icons painted out (medal-top, team and results come from full-size
+post screenshots, the rest from grid tiles). Every AI prompt names the one for its layout and
 tells the AI to match it exactly but copy none of its words, people or logos; the Studio's
 ⤓ Style reference button downloads it. MUSC has references for head, slanted head,
 matchday and signing; its other layouts point at the closest one for type and grade only

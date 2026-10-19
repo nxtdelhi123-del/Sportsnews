@@ -396,6 +396,8 @@ function setStyleRef() {
   const ref = styleRef(p.story, promptOpts(p));
   $('#styleRef').href = ref.url;
   $('#styleRef').download = ref.url.split('/').pop();
+  $('#logoSheet').href = ref.logos;
+  $('#logoSheet').download = `${state.brand}-logos.png`;
 }
 $('#copyPrompt').addEventListener('click', async () => {
   const p = state.current;
@@ -404,7 +406,7 @@ $('#copyPrompt').addEventListener('click', async () => {
   const text = posterPrompt(p.story, promptOpts(p));
   try {
     await navigator.clipboard.writeText(text);
-    toast('Prompt copied. Paste it in your image AI and attach the real photo, the ⤓ Style reference and our badge.');
+    toast('Prompt copied. In your image AI attach: the real photo, ⤓ Style reference and ⤓ Logos — then paste.');
   } catch {
     toast('Copy failed on this browser');
   }
