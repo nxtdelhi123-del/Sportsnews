@@ -307,12 +307,18 @@ function mockFetchGlobal() {
   };
 }
 
-test('API: per-sport scores include worldwide matches', async () => {
+test('API: per-sport scores include worldwide matches when Sofascore is switched on', async () => {
   mockFetchGlobal();
   const { default: scores } = await import('../api/scores.js?global');
+  process.env.SOFASCORE = 'on';
   let res = mockRes();
-  await scores({ query: { sport: 'tennis' }, headers: {} }, res);
-  let data = JSON.parse(res.body);
+  let data;
+  try {
+    await scores({ query: { sport: 'tennis' }, headers: {} }, res);
+    data = JSON.parse(res.body);
+  } finally {
+    delete process.env.SOFASCORE;
+  }
   assert.equal(res.statusCode, 200);
   assert.ok(data.matches.some((m) => m.source === 'sofascore' && m.home.name === 'Sinner J.'));
 
@@ -1077,4 +1083,25 @@ test('AI prompts: the update style is the Sports Binge default and follows the r
   // MUSC keeps its own look; classic stays available
   assert.match(posterPrompt(n, { brand: 'tsb', style: 'classic' }), /1080×1440/);
   assert.doesNotMatch(posterPrompt(n, { brand: 'musc' }), /update style/);
+});
+
+test('Sofascore is off by default: never called, no failing family, no health probe', async () => {
+  clearMemo();
+  const asked = [];
+  globalThis.fetch = async (url) => {
+    asked.push(String(url));
+    return new Response('blocked', { status: 403 });
+  };
+  const { default: scores } = await import('../api/scores.js?sofaoff');
+  const res = mockRes();
+  await scores({ query: { sport: 'basketball' }, headers: {} }, res);
+  const data = JSON.parse(res.body);
+  assert.ok(!asked.some((u) => u.includes('sofascore')), 'no request goes to Sofascore');
+  assert.equal(data.sources.families.sofascore, undefined);
+  const { default: health } = await import('../api/health.js?sofaoff');
+  const hr = mockRes();
+  await health({ query: { deep: '1' }, headers: {} }, hr);
+  const h = JSON.parse(hr.body);
+  assert.equal(h.sources.sofascoreSports, 'off');
+  assert.ok(!h.probes.some((p) => /Sofascore/.test(p.source)));
 });
