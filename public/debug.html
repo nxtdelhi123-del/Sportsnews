@@ -30,7 +30,7 @@
 <body>
   <main>
     <h1><a href="/">← NXT Sports</a> · Source check</h1>
-    <p>Each row is one real request from this server to a data provider. If a provider is blocked here, its matches can't appear on the site.</p>
+    <p>Each row is one real request from this server to a data provider. If a provider is blocked here, its matches can't appear on the site — except Sofascore, which the page also asks from your own browser (last row).</p>
     <div id="verdict" class="verdict">Checking sources…</div>
     <h2>Data providers</h2>
     <table><thead><tr><th>Source</th><th>Result</th><th>Items</th><th>Time</th><th>Detail</th></tr></thead><tbody id="probes"><tr><td colspan="5" class="muted">Running…</td></tr></tbody></table>
@@ -49,7 +49,8 @@
       const [h, s] = await Promise.allSettled([fetch('/api/health?deep=1').then((r) => r.json()), fetch('/api/scores?t=' + Date.now()).then((r) => r.json())]);
       if (h.status === 'fulfilled') {
         report.health = h.value;
-        $('#probes').innerHTML = (h.value.probes || []).map((p) => `<tr><td>${esc(p.source)}</td><td class="${p.ok ? 'ok' : 'bad'}">${p.ok ? '✓ OK' : '✗ FAIL'}</td><td>${p.items ?? ''}</td><td>${p.ms} ms</td><td>${esc(p.error || '')}</td></tr>`).join('');
+        report.browser = await browserProbe();
+        $('#probes').innerHTML = [...(h.value.probes || []), report.browser].map((p) => `<tr><td>${esc(p.source)}</td><td class="${p.ok ? 'ok' : 'bad'}">${p.ok ? '✓ OK' : '✗ FAIL'}</td><td>${p.items ?? ''}</td><td>${p.ms} ms</td><td>${esc(p.error || '')}</td></tr>`).join('');
         const bad = (h.value.probes || []).filter((p) => !p.ok).map((p) => p.source);
         const scoreOk = (h.value.probes || []).filter((p) => p.ok && /ESPN \(|Sofascore|TheSportsDB/.test(p.source)).length;
         $('#verdict').className = 'verdict' + (scoreOk >= 2 ? ' good' : '');
@@ -69,6 +70,20 @@
         if (failed.length) $('#failed').innerHTML = failed.map((f) => `<tr><td>${esc(f.source)}</td><td>${esc(f.error)}</td></tr>`).join('');
       } else {
         $('#summary').textContent = `/api/scores failed: ${s.reason}`;
+      }
+    }
+    // Sofascore blocks datacenter IPs but answers browsers on home connections; the
+    // site uses that when the server is blocked. This shows whether it works here.
+    async function browserProbe() {
+      const t = Date.now();
+      const source = 'Sofascore (from your browser)';
+      try {
+        const r = await fetch('https://api.sofascore.com/api/v1/sport/football/events/live', { mode: 'cors', credentials: 'omit' });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const b = await r.json();
+        return { source, ok: true, ms: Date.now() - t, items: b.events?.length || 0 };
+      } catch (e) {
+        return { source, ok: false, ms: Date.now() - t, error: `${e.message || e} (CORS or a block in this browser)` };
       }
     }
     $('#copy').addEventListener('click', async () => { await navigator.clipboard.writeText(JSON.stringify(report, null, 2)); $('#copy').textContent = '✓ Copied'; });

@@ -5,7 +5,7 @@ import { ESPN_CRICKET_URLS } from '../lib/espn-cricket.js';
 import { CRICINFO_RSS } from '../lib/sources.js';
 
 const BROWSER = { Referer: 'https://www.espncricinfo.com/' };
-const SOFA = { Origin: 'https://www.sofascore.com', Referer: 'https://www.sofascore.com/' };
+const SOFA = { Origin: 'https://www.sofascore.com', Referer: 'https://www.sofascore.com/', 'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-site', 'X-Requested-With': 'XMLHttpRequest' };
 
 async function probe(name, url, count, opts = {}) {
   const t = Date.now();
@@ -41,6 +41,7 @@ export default async function handler(req, res) {
       probe('ESPN cricket', ESPN_CRICKET_URLS[0], (b) => (b?.sports || []).flatMap((s) => s.leagues || []).reduce((n, l) => n + (l.events?.length || 0), 0)),
       probe('Sofascore (api.)', 'https://api.sofascore.com/api/v1/sport/football/events/live', items, { headers: SOFA }),
       probe('Sofascore (www.)', 'https://www.sofascore.com/api/v1/sport/basketball/events/live', items, { headers: SOFA }),
+      probe('Sofascore (app mirror)', 'https://api.sofascore.app/api/v1/sport/tennis/events/live', items, { headers: SOFA }),
       probe('TheSportsDB', `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${today()}&s=Cricket`, items),
       probe('ESPNcricinfo API', CRICINFO_CURRENT, items, { headers: BROWSER }),
       probe('ESPNcricinfo RSS', CRICINFO_RSS, (t) => (t.match(/<item/g) || []).length, { as: 'text', headers: BROWSER }),

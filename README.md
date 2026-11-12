@@ -7,7 +7,7 @@ Live scores and headlines from around the world, refreshed every 10 minutes, wit
 ## What it does
 
 - **Every sport, worldwide.** Pick a sport to get every match from yesterday to tomorrow, from top leagues down to regional divisions. Sports: football, cricket, basketball, tennis, American football, baseball, ice hockey, rugby, MMA, golf, motorsport, handball, volleyball, beach volleyball, table tennis, badminton, futsal, esports, darts, snooker, Aussie rules, water polo, floorball and bandy. "All sports" shows the top competitions plus every match that is live anywhere in the world.
-- **Sources:** Sofascore (global coverage), ESPN (about 110 competitions, with venues, TV channels and team colours), TheSportsDB (the major leagues of 22 sports) and ESPNcricinfo (cricket scorecards). They are independent of each other, so if one is blocked from the server the site still shows the big matches from the others. When the same match comes from two sources, the richer one is kept.
+- **Sources:** Sofascore (global coverage), ESPN (about 110 competitions, with venues, TV channels and team colours), TheSportsDB (the major leagues of 22 sports) and ESPNcricinfo (cricket scorecards). They are independent of each other, so if one is blocked from the server the site still shows the big matches from the others. When the same match comes from two sources, the richer one is kept. Sofascore refuses datacenter IPs (Vercel's included) with a 403 that no header set gets past, so when the server reports it blocked, the visitor's browser fetches Sofascore directly and merges those matches into the page (the footer then says "via your browser"); match details for those come the same way.
 - **Headlines** from about 60 feeds: BBC, Guardian, ESPN, Sky, Cricinfo, Autosport, Motorsport.com, Yahoo, CBS, NDTV, Times of India, The Hindu, Indian Express and Al Jazeera, plus Google News in 9 countries and per-sport searches (kabaddi, badminton, chess, athletics, esports and more).
 - **One-tap "Copy details"** on every match. It fetches the full match details when you tap and copies them in the format you picked:
   - **AI Poster / Video** (default): sport, competition, status, date and time (your time zone plus UTC), venue and capacity, score, result line, scorers with assists, cards, match stats, line-ups, coaches, referee, team colours and logo links, followed by a ready-to-use prompt for an image or video AI.
@@ -59,5 +59,6 @@ api/            Vercel serverless functions (scores, news, match, health)
 lib/            data sources, ESPN / Sofascore / Cricinfo normalizers, RSS parser
 public/         static site (index.html, embed.html, js/, css/)
 public/js/format.js   copy-code formatter shared by the browser and the API
+public/js/sofa.js, merge.js, importance.js   Sofascore normalizer, source merging and tiers, shared the same way
 test/           node:test suite with fixtures
 ```
