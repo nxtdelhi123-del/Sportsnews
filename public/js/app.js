@@ -1,5 +1,8 @@
 import { copyOrShow } from './copy.js';
 import { SPORTS, FORMATS, NEWS_ONLY, TIER_LABELS, sportOf, statusLabel, formatMatch, newsPoster, apiUrl } from './format.js';
+import { SOFA_SPORTS, SOFA_BROWSER_HOSTS, sofaLivePath, sofaSportPaths, collectSofa, buildSofaMatch, mapLimit } from './sofa.js';
+import { mergeSources, sortMatches } from './merge.js';
+import { matchTier } from './importance.js';
 
 const REFRESH_MS = 10 * 60_000;
 const SITE = location.origin;
@@ -73,12 +76,90 @@ async function loadSport(sport, { bust = false, quiet = false } = {}) {
     if (bust) q.set('t', Date.now());
     const data = await getJSON(`/api/scores${q.size ? '?' + q : ''}`);
     state.datasets.set(sport, data);
+    fillSofa(sport, data);
   } catch {
     if (!state.datasets.has(sport) && sport === state.sport) $('#matches').innerHTML = `<div class="empty">Couldn't load ${sport === 'all' ? 'scores' : sportOf(sport).label + ' scores'} right now. Retrying soon…</div>`;
   } finally {
     state.loading.delete(sport);
   }
   if (sport === state.sport || sport === 'all') render();
+}
+
+// ---------- Sofascore from the browser ----------
+// Sofascore answers 403 to datacenter IPs, so the server (on Vercel) is blocked, but
+// it answers a browser on a home connection. When the server reports Sofascore
+// blocked, this browser asks Sofascore itself and merges the matches into the page.
+const sofa = { host: null, deadUntil: 0, cache: new Map() };
+
+async function sofaGet(path) {
+  if (Date.now() < sofa.deadUntil) throw new Error('Sofascore unreachable from this browser');
+  let err;
+  for (const host of sofa.host ? [sofa.host] : SOFA_BROWSER_HOSTS) {
+    try {
+      const res = await fetch(host + path, { mode: 'cors', credentials: 'omit' });
+      if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status });
+      const body = await res.json();
+      sofa.host = host;
+      return body;
+    } catch (e) {
+      err = e;
+      if (e.status === 404) break;
+    }
+  }
+  // Never answered: a CORS refusal or a block. Don't hammer it; try again in 10 minutes.
+  if (!sofa.host) sofa.deadUntil = Date.now() + 10 * 60_000;
+  throw err;
+}
+
+// One request per path per refresh, however many sport views ask for it.
+function sofaEvents(path) {
+  const hit = sofa.cache.get(path);
+  if (hit && hit.expires > Date.now()) return hit.promise;
+  const promise = sofaGet(path).then((b) => b.events || []);
+  sofa.cache.set(path, { promise, expires: Date.now() + (path.includes('/live') ? 2 : 4) * 60_000 });
+  promise.catch(() => sofa.cache.delete(path));
+  return promise;
+}
+
+const sofaBlocked = (ds) => {
+  const f = ds?.sources?.families?.sofascore;
+  return Boolean(f && f.attempted && !f.ok && !f.browser);
+};
+
+async function fillSofa(sport, ds) {
+  if (!sofaBlocked(ds) || Date.now() < sofa.deadUntil) return;
+  const f = ds.sources.families.sofascore;
+  f.browser = true;
+  const slugs = sport === 'all' ? Object.values(SOFA_SPORTS) : [SOFA_SPORTS[sport]].filter(Boolean);
+  const now = Date.now();
+  const perSlug = await mapLimit(slugs, 4, async (slug) => {
+    const paths = sport === 'all' ? [sofaLivePath(slug)] : sofaSportPaths(slug, now);
+    const lists = await mapLimit(paths, 4, sofaEvents);
+    if (lists.every((r) => r.status === 'rejected')) throw lists[0].reason;
+    return collectSofa(lists.filter((r) => r.status === 'fulfilled').map((r) => r.value), slug, now);
+  });
+  const ok = perSlug.filter((r) => r.status === 'fulfilled');
+  if (!ok.length) return;
+  const before = ds.matches.length;
+  const merged = mergeSources(ds.matches, ok.flatMap((r) => r.value));
+  for (const m of merged.slice(before)) {
+    const { tier, reason } = matchTier(m);
+    m.tier = tier;
+    m.tierReason = reason;
+  }
+  ds.matches = sortMatches(merged);
+  ds.count = ds.matches.length;
+  ds.live = {};
+  for (const m of ds.matches) if (m.status.state === 'in') ds.live[m.sport] = (ds.live[m.sport] || 0) + 1;
+  Object.assign(f, { ok: ok.length, failed: slugs.length - ok.length, matches: merged.length - before, via: 'browser' });
+  if (state.datasets.get(sport) === ds && (sport === state.sport || sport === 'all')) render();
+}
+
+// Full details for a Sofascore match, fetched by this browser when the server can't.
+async function sofaDetail(m) {
+  const full = await buildSofaMatch(sofaGet, m.league.path.slice(5), m.id);
+  if (!full) throw new Error('no detail');
+  return full;
 }
 
 async function loadNews(bust) {
@@ -331,7 +412,7 @@ function renderStatus() {
   const parts = [];
   if (s?.families) {
     const fams = Object.entries(s.families);
-    parts.push(fams.filter(([, f]) => f.matches).map(([k, f]) => `${FAMILY_NAMES[k] || k} ${f.matches}`).join(' · '));
+    parts.push(fams.filter(([, f]) => f.matches).map(([k, f]) => `${FAMILY_NAMES[k] || k} ${f.matches}${f.via === 'browser' ? ' (via your browser)' : ''}`).join(' · '));
     const blocked = fams.filter(([, f]) => f.attempted && !f.ok).map(([k]) => FAMILY_NAMES[k] || k);
     if (blocked.length) parts.push(`${blocked.join(', ')} blocked`);
   } else if (s) parts.push(`${s.ok} score sources online${s.failed?.length ? `, ${s.failed.length} unavailable` : ''}`);
@@ -345,7 +426,8 @@ function renderStatus() {
   const dead = s?.families ? Object.entries(s.families).filter(([, f]) => f.attempted && f.failed && !f.ok).map(([k]) => FAMILY_NAMES[k] || k) : [];
   if (dead.length && (ds?.count || 0) < 60) {
     banner.hidden = false;
-    banner.innerHTML = `⚠️ ${esc(dead.join(' and '))} ${dead.length > 1 ? 'are' : 'is'} not reachable from the server right now, so the list is short. <a href="/debug">Run the source check</a>.`;
+    const sofaTried = s.families.sofascore?.browser && !s.families.sofascore.ok;
+    banner.innerHTML = `⚠️ ${esc(dead.join(' and '))} ${dead.length > 1 ? 'are' : 'is'} not reachable from the server right now${sofaTried ? ', and this browser could not reach Sofascore either' : ''}, so the list is short. <a href="/debug">Run the source check</a>.`;
   } else banner.hidden = true;
 }
 
@@ -372,6 +454,7 @@ function detailed(m) {
   const hit = state.details.get(k);
   if (hit && Date.now() - hit.at < 120_000) return hit.promise;
   const promise = getJSON(apiUrl(m, '', 'json'))
+    .catch((e) => (m.source === 'sofascore' ? sofaDetail(m) : Promise.reject(e)))
     .then((full) => ({ ...m, ...full, league: { ...m.league, ...full.league }, details: full.details }))
     .catch(() => m);
   state.details.set(k, { at: Date.now(), promise });

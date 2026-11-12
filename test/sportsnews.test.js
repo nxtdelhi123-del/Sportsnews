@@ -430,7 +430,7 @@ test('API: overview survives ESPN and Sofascore being blocked thanks to TheSport
 });
 
 // ---- importance ----
-import { matchTier, newsTier } from '../lib/importance.js';
+import { matchTier, newsTier } from '../public/js/importance.js';
 
 test('matches are labelled VIMP / IMP / not important', () => {
   const t = (m) => matchTier(m).tier;
