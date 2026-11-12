@@ -9,7 +9,8 @@ export default async function handler(req, res) {
   try {
     const data = await getScores(sport);
     const matches = state ? data.matches.filter((m) => m.status.state === state) : data.matches;
-    setCache(res, data.partial ? 45 : undefined);
+    const live = Object.values(data.live || {}).some((n) => n > 0);
+    setCache(res, data.partial ? 45 : live ? 60 : undefined);
     sendJSON(res, 200, slim({ ...data, count: matches.length, matches }));
   } catch (err) {
     sendJSON(res, 502, { error: 'Failed to load scores', detail: String(err?.message || err) });

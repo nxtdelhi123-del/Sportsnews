@@ -79,20 +79,47 @@ async function loadSport(sport, { bust = false, quiet = false } = {}) {
     state.loading.delete(sport);
   }
   if (sport === state.sport || sport === 'all') render();
+  if (location.hash.startsWith('#m=')) openFromHash();
+}
+
+// The newest 300 headlines load first (a small download); a sport's full list is added
+// the first time that sport is opened.
+const NEWS_FIRST = 300;
+function mergeNewsItems(items) {
+  const seen = new Set(state.news.map((n) => n.id));
+  const add = items.filter((n) => !seen.has(n.id));
+  if (add.length) state.news = [...state.news, ...add].sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
 }
 
 async function loadNews(bust) {
   try {
-    const data = await getJSON(`/api/news${bust ? `?t=${Date.now()}` : ''}`);
+    const q = new URLSearchParams({ limit: NEWS_FIRST });
+    if (bust) q.set('t', Date.now());
+    const data = await getJSON(`/api/news?${q}`);
     state.news = data.items || [];
+    state.newsSports = new Set();
     state.newsSources = data.sources;
     state.newsAt = data.updatedAt;
   } catch {
     if (!state.news.length) $('#news').innerHTML = `<div class="empty">Couldn't load headlines right now.</div>`;
   }
+  if (state.sport !== 'all') loadSportNews(state.sport);
   renderNews();
   renderTicker();
   renderStatus();
+}
+
+async function loadSportNews(sport) {
+  state.newsSports ||= new Set();
+  if (sport === 'all' || state.newsSports.has(sport)) return;
+  state.newsSports.add(sport);
+  try {
+    const data = await getJSON(`/api/news?sport=${encodeURIComponent(sport)}&limit=200`);
+    mergeNewsItems(data.items || []);
+    if (state.sport === sport) renderNews();
+  } catch {
+    state.newsSports.delete(sport);
+  }
 }
 
 async function load({ bust = false } = {}) {
@@ -105,9 +132,44 @@ async function load({ bust = false } = {}) {
   schedule();
 }
 
+// While anything is live, scores refresh every minute (the server rebuilds them as often);
+// a score that changes flashes.
+const LIVE_MS = 60_000;
+let liveTimer;
+function scheduleLive() {
+  clearTimeout(liveTimer);
+  const anyLive = [...state.datasets.values()].some((d) => Object.values(d?.live || {}).some((n) => n > 0));
+  if (!anyLive) return;
+  liveTimer = setTimeout(async () => {
+    if (document.visibilityState === 'visible') {
+      const before = new Map([...state.byKey.values()].map((m) => [keyOf(m), scoreSig(m)]));
+      const jobs = [loadSport('all', { quiet: true })];
+      if (state.sport !== 'all' && !NEWS_ONLY.has(state.sport)) jobs.push(loadSport(state.sport, { quiet: true }));
+      await Promise.allSettled(jobs);
+      flashChanged(before);
+    }
+    scheduleLive();
+  }, LIVE_MS);
+}
+const scoreSig = (m) => `${m.home?.score ?? ''}-${m.away?.score ?? ''}-${m.status?.short || ''}`;
+function flashChanged(before) {
+  for (const m of state.byKey.values()) {
+    const k = keyOf(m);
+    const was = before.get(k);
+    if (was && was.split('-').slice(0, 2).join('-') !== scoreSig(m).split('-').slice(0, 2).join('-')) {
+      document.querySelectorAll(`[data-key="${CSS.escape(k)}"]`).forEach((el) => {
+        el.classList.remove('bump');
+        void el.offsetWidth;
+        el.classList.add('bump');
+      });
+    }
+  }
+}
+
 // Refresh on every 10-minute mark, a few seconds after the server rebuilds.
 let timer;
 function schedule() {
+  scheduleLive();
   clearTimeout(timer);
   const next = Math.floor(Date.now() / REFRESH_MS) * REFRESH_MS + REFRESH_MS + 8000;
   state.nextAt = new Date(next).toISOString();
@@ -132,6 +194,7 @@ document.addEventListener('visibilitychange', () => {
 // ---------- rendering ----------
 function render() {
   renderChips();
+  renderRail();
   renderMatches();
   renderNews();
   renderTicker();
@@ -156,6 +219,48 @@ function renderChips() {
 }
 
 const TIER_RANK = { vimp: 3, imp: 2, low: 1 };
+
+// "Live now" across the top: the biggest live matches, or the next big kick-offs when
+// nothing is live. Tapping one opens its match centre.
+function railMatches() {
+  const ds = current() || state.datasets.get('all');
+  if (!ds) return { live: false, list: [] };
+  const pool = ds.matches.filter((m) => m.kind === 'versus' && (state.sport === 'all' || m.sport === state.sport));
+  const rank = (m) => (TIER_RANK[m.tier] || 0) * 100000 + (m.league?.priority || 0);
+  let live = pool.filter((m) => m.status.state === 'in').sort((a, b) => rank(b) - rank(a));
+  // minor competitions only fill in when there are few big ones
+  const big = live.filter((m) => m.tier !== 'low');
+  if (big.length >= 6) live = big;
+  if (live.length) return { live: true, list: live.slice(0, 18) };
+  const soon = pool.filter((m) => m.status.state === 'pre' && Date.parse(m.date) - Date.now() < 18 * 3600_000).sort((a, b) => (TIER_RANK[b.tier] || 0) - (TIER_RANK[a.tier] || 0) || Date.parse(a.date) - Date.parse(b.date));
+  return { live: false, list: soon.slice(0, 18) };
+}
+
+const crest = (t = {}, size = 28) =>
+  safeUrl(t.logo)
+    ? `<img src="${esc(t.logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" width="${size}" height="${size}" onerror="this.style.visibility='hidden'">`
+    : `<span class="badge" style="width:${size}px;height:${size}px">${esc((t.abbr || t.name || '?').slice(0, 3).toUpperCase())}</span>`;
+
+function renderRail() {
+  const box = $('#liveRail');
+  if (!box) return;
+  const { live, list } = railMatches();
+  if (!list.length || NEWS_ONLY.has(state.sport)) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  const tile = (m) => {
+    const st = m.status.state;
+    const sc = (t) => (st === 'pre' ? '' : esc(t.score ?? ''));
+    return `<button class="rail-tile state-${st}" data-key="${esc(keyOf(m))}" data-open="1" title="${esc(m.name)}">
+      <span class="rail-league">${sportOf(m.sport).emoji} ${esc(m.league.name)}</span>
+      ${[m.home, m.away].map((t) => `<span class="rail-team${String(t.score ?? '').length > 5 ? ' long' : ''}">${crest(t, 22)}<b>${esc(t.abbr || t.short || t.name)}</b><em>${sc(t)}</em></span>`).join('')}
+      <span class="rail-status ${st}">${st === 'in' ? '<i></i>' : ''}${esc(st === 'pre' ? localTime(m.date) : statusLabel(m))}</span>
+    </button>`;
+  };
+  box.innerHTML = `<div class="rail-head">${live ? '<i class="dot-live"></i>Live now' : 'Up next'}</div><div class="rail-track">${list.map(tile).join('')}</div>`;
+}
 const tierOk = (t) => state.tier === 'all' || (state.tier === 'vimp' ? t === 'vimp' : t === 'vimp' || t === 'imp');
 const tierBadge = (t) => (t ? `<span class="tier tier-${t}" title="${esc(TIER_LABELS[t])}">${t === 'low' ? 'NOT IMP' : esc(TIER_LABELS[t])}</span>` : '');
 
@@ -193,13 +298,14 @@ function matchCard(m) {
       : teamRow(m.home, m) + teamRow(m.away, m);
   const events = (m.events || []).filter((e) => /goal|red/i.test(e.type)).slice(0, 6);
   const venue = [m.venue?.name, m.venue?.city].filter(Boolean).join(', ');
-  return `<article class="card state-${st}" data-key="${esc(keyOf(m))}">
+  const accent = m.kind === 'versus' ? ` style="--home:${esc(m.home?.color || 'transparent')};--away:${esc(m.away?.color || 'transparent')}"` : '';
+  return `<article class="card state-${st}" data-key="${esc(keyOf(m))}"${accent}>
     <header class="card-head">
       <span class="league">${tierBadge(m.tier)}${sp.emoji} ${esc(groupName(m))}</span>
       <span class="status ${st}">${st === 'in' ? '<i></i>' : ''}${esc(statusLabel(m))}</span>
     </header>
     ${m.note ? `<div class="note">${esc(m.note)}</div>` : ''}
-    <div class="card-body">${body}</div>
+    <div class="card-body" data-open="1" role="button" tabindex="0" title="Open the match centre">${body}</div>
     ${events.length ? `<ul class="events">${events.map((e) => `<li>${esc(e.minute)} ${/red/i.test(e.type) ? '🟥' : '⚽'} ${esc(e.player)}${e.team ? ` <small>${esc(e.team)}</small>` : ''}</li>`).join('')}</ul>` : ''}
     <div class="meta">
       <span title="${esc(m.date)}">🕒 ${esc(localTime(m.date))}</span>
@@ -300,9 +406,10 @@ function renderNews() {
     $('#news').innerHTML = state.news.length ? `<div class="empty">No headlines for this filter.</div>` : '<div class="skeleton"></div><div class="skeleton"></div>';
     return;
   }
+  const lead = list.findIndex((n) => safeUrl(n.image) && n.tier !== 'low');
   $('#news').innerHTML = list
     .map(
-      (n, i) => `<article class="news-item">
+      (n, i) => `<article class="news-item${i === lead ? ' lead' : ''}">
       ${safeUrl(n.image) ? `<img src="${esc(n.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
       <div>
         <a href="${esc(safeUrl(n.link))}" target="_blank" rel="noopener" class="news-title">${esc(n.title)}</a>
@@ -424,6 +531,144 @@ function renderDialog() {
   $('#dialogHint').textContent = hints[dialogFormat] || '';
 }
 
+// ---------- match centre ----------
+// Tap a match: a big scoreboard with the timeline, team stats, line-ups and venue, plus
+// the copy / post actions. The address bar carries #m=<key>, so a match can be shared.
+function findMatch(k) {
+  if (state.byKey.has(k)) return state.byKey.get(k);
+  for (const ds of state.datasets.values()) {
+    const m = ds?.matches?.find((x) => keyOf(x) === k);
+    if (m) return m;
+  }
+  return null;
+}
+
+let centreMatch = null;
+let centreTab = 'timeline';
+async function openCentre(m) {
+  centreMatch = m;
+  centreTab = 'timeline';
+  renderCentre(m, true);
+  const dlg = $('#matchDialog');
+  if (!dlg.open) dlg.showModal();
+  history.replaceState(null, '', `#m=${encodeURIComponent(keyOf(m))}`);
+  const full = await detailed(m);
+  if (centreMatch === m) {
+    centreMatch = full;
+    renderCentre(full, false);
+  }
+}
+
+const EVENT_ICON = (t = '') => (/own goal/i.test(t) ? '⚽︎' : /penalty.*(miss|saved)/i.test(t) ? '❌' : /goal|penalty/i.test(t) ? '⚽' : /red/i.test(t) ? '🟥' : /yellow/i.test(t) ? '🟨' : /sub/i.test(t) ? '🔁' : '•');
+const pct = (h, a) => {
+  const n = (v) => Number.parseFloat(String(v).replace('%', '')) || 0;
+  const x = n(h);
+  const y = n(a);
+  return x + y > 0 ? Math.round((x / (x + y)) * 100) : 50;
+};
+
+function renderCentre(m, loading) {
+  const st = m.status.state;
+  const d = m.details || {};
+  const versus = m.kind === 'versus';
+  const side = (t, which) => `<div class="mc-team ${which}${t.winner ? ' winner' : ''}">${crest(t, 64)}<b>${esc(t.name || 'TBD')}</b>${t.record ? `<small>${esc(t.record)}</small>` : ''}</div>`;
+  const score = (t) => (st === 'pre' ? '' : esc(t.score ?? ''));
+  // Cricket-style scores ("434/9d & 42/1 (14.1 ov)") get a stacked board: one team per row.
+  const long = versus && [m.home, m.away].some((t) => String(t.score ?? '').length > 5);
+  const row = (t) => `<div class="mc-row${t.winner ? ' winner' : ''}">${crest(t, 40)}<b>${esc(t.name || 'TBD')}</b><span>${score(t)}</span></div>`;
+  const head = !versus
+    ? `<div class="mc-field"><b>${esc(m.name)}</b></div>`
+    : long
+      ? `<div class="mc-stack">${row(m.home)}${row(m.away)}</div>`
+      : `<div class="mc-board">${side(m.home, 'home')}<div class="mc-score"><span>${score(m.home)}</span><i>${st === 'pre' ? 'vs' : '–'}</i><span>${score(m.away)}</span></div>${side(m.away, 'away')}</div>`;
+  const events = (m.events || []).filter((e) => e.type);
+  const tabs = [
+    ['timeline', 'Timeline', versus ? events.length : (m.leaders || []).length],
+    ['stats', 'Stats', d.stats?.length],
+    ['lineups', 'Line-ups', (d.lineups || []).some((l) => l.starters?.length)],
+    ['info', 'Info', 1],
+  ].filter(([, , n]) => n);
+  if (!tabs.some(([k]) => k === centreTab)) centreTab = tabs[0]?.[0] || 'info';
+  let body = '';
+  if (centreTab === 'timeline') {
+    body = versus
+      ? `<ol class="mc-timeline">${events
+          .map((e) => {
+            const home = e.team && [m.home.name, m.home.abbr, m.home.short].some((x) => x && String(x).toLowerCase() === String(e.team).toLowerCase());
+            return `<li class="${home ? 'h' : 'a'}"><span class="min">${esc(e.minute)}</span><span class="ev">${EVENT_ICON(e.type)} <b>${esc(e.player || e.type)}</b>${e.player ? ` <small>${esc(e.type)}</small>` : ''}</span></li>`;
+          })
+          .join('')}</ol>`
+      : `<ol class="leaders mc-leaders">${(m.leaders || []).map((l) => `<li><span>${esc(l.position)}</span>${esc(l.name)}<b>${esc(l.score)}</b></li>`).join('')}</ol>`;
+  } else if (centreTab === 'stats') {
+    body = `<div class="mc-stats">${d.stats
+      .map((r) => {
+        const p = pct(r.home, r.away);
+        return `<div class="stat"><div class="stat-row"><b>${esc(r.home)}</b><span>${esc(r.label)}</span><b>${esc(r.away)}</b></div><div class="bar"><i style="width:${p}%"></i><i style="width:${100 - p}%"></i></div></div>`;
+      })
+      .join('')}</div>`;
+  } else if (centreTab === 'lineups') {
+    body = `<div class="mc-lineups">${d.lineups.map((l) => `<div><h4>${esc(l.team)} ${l.formation ? `<small>${esc(l.formation)}</small>` : ''}</h4><ol>${(l.starters || []).map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>`).join('')}</div>`;
+  } else {
+    const rows = [
+      ['Competition', m.league.name],
+      ['Round', m.note],
+      ['Kick-off', `${localTime(m.date)}`],
+      ['Venue', [m.venue?.name, m.venue?.city, m.venue?.country].filter(Boolean).join(', ')],
+      ['Capacity', d.capacity ? Number(d.capacity).toLocaleString() : ''],
+      ['Attendance', d.attendance ? Number(d.attendance).toLocaleString() : ''],
+      ['Officials', (d.officials || []).join(' · ')],
+      ['On TV', (m.broadcasts || []).join(', ')],
+    ].filter(([, v]) => v);
+    body = `${m.headline || d.recap ? `<p class="mc-recap">${esc(d.recap || m.headline)}</p>` : ''}<dl class="mc-info">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${(d.playerLeaders || []).length ? `<ul class="mc-leadersline">${d.playerLeaders.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}`;
+  }
+  const dlg = $('#matchDialog');
+  dlg.className = `match-dialog state-${st}`;
+  dlg.style.setProperty('--home', m.home?.color || 'var(--red)');
+  dlg.style.setProperty('--away', m.away?.color || '#555');
+  $('#mcBody').innerHTML = `
+    <div class="mc-top"><span>${sportOf(m.sport).emoji} ${esc(m.league.name)}${m.note ? ` · ${esc(m.note)}` : ''}</span><span class="status ${st}">${st === 'in' ? '<i></i>' : ''}${esc(statusLabel(m))}</span></div>
+    ${head}
+    <nav class="mc-tabs">${tabs.map(([k, label]) => `<button data-tab="${k}" class="${k === centreTab ? 'active' : ''}">${label}</button>`).join('')}</nav>
+    <div class="mc-panel">${body || (loading ? '<div class="skeleton"></div>' : '<div class="empty">No details yet.</div>')}${loading ? '<p class="loading-note">Loading the full match details…</p>' : ''}</div>
+    <div class="mc-actions">
+      <button class="btn copy-btn" data-mc="copy">⧉ Copy details</button>
+      <a class="btn ghost" href="/studio?brand=tsb&key=${esc(encodeURIComponent(`match:${m.league?.path || 'x'}:${m.id}`))}">🎨 Make a post</a>
+      <button class="btn ghost" data-mc="formats">&lt;/&gt; Formats</button>
+      ${safeUrl(m.link) ? `<a class="btn ghost" href="${esc(m.link)}" target="_blank" rel="noopener">ESPN ↗</a>` : ''}
+    </div>`;
+}
+
+function bindCentre() {
+  const dlg = $('#matchDialog');
+  dlg.addEventListener('click', (e) => {
+    if (e.target === dlg || e.target.closest('[data-close]')) return dlg.close();
+    const tab = e.target.closest('[data-tab]');
+    if (tab) {
+      centreTab = tab.dataset.tab;
+      return renderCentre(centreMatch, false);
+    }
+    const act = e.target.closest('[data-mc]');
+    if (!act || !centreMatch) return;
+    if (act.dataset.mc === 'copy') copyMatch(centreMatch, act);
+    else {
+      dlg.close();
+      openCodes(centreMatch);
+    }
+  });
+  dlg.addEventListener('close', () => {
+    centreMatch = null;
+    if (location.hash.startsWith('#m=')) history.replaceState(null, '', location.pathname + location.search);
+  });
+}
+
+// A shared link (#m=<key>) opens that match once the scores are in.
+function openFromHash() {
+  const k = location.hash.startsWith('#m=') ? decodeURIComponent(location.hash.slice(3)) : '';
+  const m = k && findMatch(k);
+  if (m && !$('#matchDialog').open) openCentre(m);
+  return !!m;
+}
+
 // ---------- events ----------
 function setSport(sport) {
   state.sport = sport;
@@ -432,6 +677,7 @@ function setSport(sport) {
   document.querySelectorAll('#stateFilter button').forEach((x) => x.classList.toggle('active', x.dataset.state === 'all'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (!NEWS_ONLY.has(sport) && stale(state.datasets.get(sport))) loadSport(sport);
+  loadSportNews(sport);
   render();
   document.querySelector(`.chip[data-sport="${sport}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
 }
@@ -479,13 +725,28 @@ function bind() {
   });
 
   $('#matches').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-act]');
-    if (!b) return;
-    const m = state.byKey.get(b.closest('.card').dataset.key);
+    const card = e.target.closest('.card');
+    const m = card && findMatch(card.dataset.key);
     if (!m) return;
-    if (b.dataset.act === 'copy') copyMatch(m, b);
-    else openCodes(m);
+    const b = e.target.closest('[data-act]');
+    if (b) {
+      if (b.dataset.act === 'copy') copyMatch(m, b);
+      else openCodes(m);
+    } else if (e.target.closest('[data-open]') && !e.target.closest('a')) openCentre(m);
   });
+  $('#matches').addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-open]')) {
+      e.preventDefault();
+      const m = findMatch(e.target.closest('.card')?.dataset.key);
+      if (m) openCentre(m);
+    }
+  });
+  $('#liveRail').addEventListener('click', (e) => {
+    const t = e.target.closest('[data-open]');
+    const m = t && findMatch(t.dataset.key);
+    if (m) openCentre(m);
+  });
+  bindCentre();
 
   $('#news').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-copy-news]');

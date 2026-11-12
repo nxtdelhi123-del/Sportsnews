@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NXT Sports · Global Sports Newsroom</title>
-  <meta name="description" content="Live scores and sports headlines from around the world, refreshed every 10 minutes. Copy match details as text, Markdown, JSON or embed code in one click.">
+  <meta name="description" content="Live scores from 300+ competitions and sports headlines from around the world: live scores refresh every minute. Copy match details as text, Markdown, JSON or embed code in one click.">
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta property="og:title" content="NXT Sports · Global Sports Newsroom">
@@ -34,7 +34,7 @@
       </picture>
       <span class="brand-sub">
         <span class="sports-word">Sports</span>
-        <span class="tagline"><span class="logo" aria-hidden="true">●</span> Live newsroom · every 10 min</span>
+        <span class="tagline"><span class="logo" aria-hidden="true">●</span> Live newsroom · live scores every minute</span>
       </span>
     </a>
     <div class="refresh" aria-live="polite">
@@ -54,6 +54,7 @@
 
   <div id="sourceBanner" class="banner" hidden></div>
   <nav class="sports" id="sportChips" aria-label="Filter by sport"></nav>
+  <section id="liveRail" class="live-rail" aria-label="Live now" hidden></section>
 
   <div class="view-switch" role="tablist">
     <button role="tab" class="active" data-view="scores">Scores</button>
@@ -97,7 +98,7 @@
 
   <footer class="footer">
     <p class="footer-brand"><picture><source srcset="/img/nxt-mark-dark.png" media="(prefers-color-scheme: dark)"><img src="/img/nxt-mark.png" alt="" width="51" height="30"></picture> <strong>NXT Sports</strong> · Global Sports Newsroom</p>
-    <p>Data: ESPN, ESPNcricinfo, TheSportsDB, BBC Sport, The Guardian, Sky Sports, Google News and more. Updated every 10 minutes. Every match has a one-tap <b>Copy details</b> button: full match info plus a ready-made prompt for AI posters and videos.</p>
+    <p>Data: ESPN, ESPNcricinfo, TheSportsDB, BBC Sport, The Guardian, Sky Sports, Google News and more. Live scores refresh every minute, everything else every 10 minutes. Tap any match for its match centre. Every match has a one-tap <b>Copy details</b> button: full match info plus a ready-made prompt for AI posters and videos.</p>
     <p id="sourceStatus" class="muted"></p>
   </footer>
 
@@ -112,6 +113,11 @@
       <span id="dialogHint" class="muted"></span>
       <button id="dialogCopy" class="btn" type="button">⧉ Copy</button>
     </div>
+  </dialog>
+
+  <dialog id="matchDialog" class="match-dialog" aria-label="Match centre">
+    <button class="icon-btn mc-close" data-close aria-label="Close">✕</button>
+    <div id="mcBody"></div>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

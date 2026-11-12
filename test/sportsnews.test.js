@@ -1105,3 +1105,42 @@ test('Sofascore is off by default: never called, no failing family, no health pr
   assert.equal(h.sources.sofascoreSports, 'off');
   assert.ok(!h.probes.some((p) => /Sofascore/.test(p.source)));
 });
+
+test('soccer: one all-competitions call per day replaces the per-league scoreboards', async () => {
+  clearMemo();
+  const [arsenal, liverpool] = fx.soccerScoreboard.events;
+  const asked = [];
+  const day = {
+    events: [
+      { ...arsenal, uid: 's:600~l:700~e:1' },
+      { ...liverpool, id: '555', uid: 's:600~l:999~e:555', competitions: [{ ...liverpool.competitions[0], id: '555' }] },
+      { ...liverpool, id: '777', uid: 's:600~l:5499~e:777', competitions: [{ ...liverpool.competitions[0], id: '777' }] },
+    ],
+  };
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    asked.push(u);
+    if (u.includes('/leagues/dropdown?sport=soccer'))
+      return new Response(JSON.stringify({ leagues: [{ id: '700', slug: 'eng.1', name: 'English Premier League' }, { id: '999', slug: 'tha.1', name: 'Thai League 1' }, { id: '5499', slug: 'usa.ncaa.w.1', name: "NCAA Women's Soccer" }] }));
+    if (u.includes('soccer/all/scoreboard')) return new Response(JSON.stringify(u.includes(new Date(NOW).toISOString().slice(0, 10).replace(/-/g, '')) ? day : { events: [] }));
+    return new Response('nope', { status: 404 });
+  };
+  const realNow = Date.now;
+  Date.now = () => NOW;
+  let data;
+  try {
+    const { getScores } = await import('../lib/feeds.js');
+    data = await getScores('soccer');
+  } finally {
+    Date.now = realNow;
+  }
+  const soccer = data.matches.filter((m) => m.sport === 'soccer');
+  assert.equal(soccer.length, 2, 'the college match is left out');
+  const epl = soccer.find((m) => m.home.name === 'Arsenal');
+  assert.equal(epl.league.path, 'soccer/eng.1');
+  assert.equal(epl.league.name, 'Premier League', 'a competition we know keeps our name and importance');
+  assert.ok(epl.league.priority > 0);
+  assert.equal(soccer.find((m) => m.id === '555').league.name, 'Thai League 1', 'any other competition comes with its ESPN name');
+  assert.ok(!asked.some((u) => /soccer\/(eng|esp|ita)\.\d\/scoreboard/.test(u)), 'no per-league soccer calls');
+  assert.ok(asked.filter((u) => u.includes('soccer/all/scoreboard')).length <= 6);
+});
