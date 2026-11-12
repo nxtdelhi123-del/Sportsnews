@@ -14,6 +14,7 @@ Live scores and headlines from around the world: live scores refresh every minut
   - **Text**, **Markdown**, **JSON**, **HTML embed** and **Live API URL**.
 - **Importance labels.** Every match and headline is tagged **VIMP** (very important: Champions League, World Cup, IPL, internationals between the big cricket nations, Grand Slams, race day in F1, finals, and any match with a marquee club or star), **IMP** (important: top domestic leagues, NBA, NFL, ATP/WTA, UFC and similar) or **Not important**. The VIMP and IMP+ filters show only the big ones, and "Copy all shown" copies them together. Rules live in `lib/importance.js`.
 - **Copy on headlines** gives the headline, summary, source and image, plus a "breaking news" poster prompt.
+- **Manchester United desk** (`/united`, or the 🔴 MUFC button): United's live or next match with a countdown, the last result, fixtures and results in every competition, the Premier League table, the squad and every United headline. Each match and headline copies with a MUSC prompt and opens in the Studio as a @musc_reddevils post.
 - Updates every 10 minutes (:00, :10, :20, :30, :40, :50); while anything is live, scores refresh every minute and a changed score flashes. The page shows a countdown and refreshes itself.
 
 ## NXT Studio (Phase 1)

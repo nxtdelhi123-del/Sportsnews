@@ -1144,3 +1144,41 @@ test('soccer: one all-competitions call per day replaces the per-league scoreboa
   assert.ok(!asked.some((u) => /soccer\/(eng|esp|ita)\.\d\/scoreboard/.test(u)), 'no per-league soccer calls');
   assert.ok(asked.filter((u) => u.includes('soccer/all/scoreboard')).length <= 6);
 });
+
+test('copying a match before the line-ups are out does not break', () => {
+  const m = { kind: 'versus', sport: 'soccer', id: '1', name: 'Liverpool vs Manchester United', date: '2026-11-22T16:30Z', status: { state: 'pre' }, league: { path: 'soccer/eng.1', name: 'Premier League' }, home: { name: 'Liverpool' }, away: { name: 'Manchester United' }, details: { lineups: [{ team: 'Liverpool' }, { team: 'Manchester United', formation: '4-2-3-1' }] } };
+  const out = formatMatch(m, 'poster', { brand: 'musc' });
+  assert.doesNotMatch(out, /LINE-UPS/);
+  assert.match(out, /musc_reddevils/);
+});
+
+test('United desk: every competition, the live minute, the table, the squad and United-only news', async () => {
+  clearMemo();
+  const ev = (id, date, home, away, hs, as, state, league = { slug: 'eng.1', name: 'English Premier League', abbreviation: 'Premier League' }) => ({
+    id, date, name: `${away[1]} at ${home[1]}`, league,
+    competitions: [{ id, date, status: { type: { state, completed: state === 'post', detail: state } }, competitors: [
+      { id: home[0], homeAway: 'home', score: { value: hs, displayValue: String(hs ?? '') }, team: { id: home[0], displayName: home[1] } },
+      { id: away[0], homeAway: 'away', score: { value: as, displayValue: String(as ?? '') }, team: { id: away[0], displayName: away[1] } },
+    ] }],
+  });
+  const utd = ['360', 'Manchester United'];
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    const json = (b) => new Response(JSON.stringify(b));
+    if (u.includes('/teams/360/schedule?fixture=true')) return json({ events: [ev('2', '2026-11-25T20:00Z', ['2250', 'Sporting CP'], utd, null, null, 'pre', { slug: 'uefa.champions', name: 'UEFA Champions League' })] });
+    if (u.includes('/teams/360/schedule')) return json({ events: [ev('1', '2026-11-08T16:30Z', utd, ['362', 'Aston Villa'], 4, 4, 'post')] });
+    if (u.includes('/teams/360/roster')) return json({ athletes: [{ displayName: 'Bruno Fernandes', jersey: '8', position: { displayName: 'Midfielder' }, age: 32, citizenship: 'Portugal' }, { displayName: 'Senne Lammens', jersey: '1', position: { displayName: 'Goalkeeper' } }] });
+    if (u.includes('/teams/360')) return json({ team: { displayName: 'Manchester United', color: 'da020e', standingSummary: '18th in English Premier League' } });
+    if (u.includes('/eng.1/standings')) return json({ children: [{ name: '2026-27 English Premier League', standings: { entries: [{ team: { id: '359', shortDisplayName: 'Arsenal' }, stats: [{ name: 'rank', displayValue: '1' }, { name: 'points', displayValue: '27' }] }, { team: { id: '360', shortDisplayName: 'Man Utd' }, stats: [{ name: 'rank', displayValue: '18' }, { name: 'points', displayValue: '8' }] }] } }] });
+    if (u.includes('feeds.bbci.co.uk/sport/rss.xml')) return new Response(`<rss><channel><item><title>Carrick sacked by Manchester United</title><link>https://x/1</link><pubDate>${new Date().toUTCString()}</pubDate></item><item><title>West Ham United win again</title><link>https://x/2</link><pubDate>${new Date().toUTCString()}</pubDate></item><item><title>Man City top the table</title><link>https://x/3</link><pubDate>${new Date().toUTCString()}</pubDate></item></channel></rss>`);
+    return new Response('nope', { status: 404 });
+  };
+  const { getUnited } = await import('../lib/united.js');
+  const d = await getUnited();
+  assert.equal(d.last.home.score, '4');
+  assert.equal(d.last.competition, 'Premier League');
+  assert.equal(d.next.league.path, 'soccer/uefa.champions', 'Europe is listed with the league');
+  assert.equal(d.table.rows.find((r) => r.id === '360').rank, 18);
+  assert.deepEqual(d.squad.map((g) => g.position), ['Goalkeeper', 'Midfielder']);
+  assert.deepEqual(d.news.map((n) => n.title), ['Carrick sacked by Manchester United'], 'West Ham United and Man City are not United news');
+});
