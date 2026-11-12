@@ -8,10 +8,6 @@
     "api/studio/*.js": {
       "maxDuration": 60,
       "includeFiles": "{lib/studio/fonts/**,public/studio/brand/**}"
-    },
-    "api/autopilot.js": {
-      "maxDuration": 60,
-      "includeFiles": "{lib/studio/fonts/**,public/studio/brand/**}"
     }
   },
   "headers": [
@@ -50,15 +46,15 @@
   "rewrites": [
     {
       "source": "/api/cron/studio",
-      "destination": "/api/autopilot?route=cron"
+      "destination": "/api/studio/autopilot?route=cron"
     },
     {
       "source": "/api/studio/media",
-      "destination": "/api/autopilot?route=media"
+      "destination": "/api/studio/autopilot?route=media"
     },
     {
       "source": "/api/telegram",
-      "destination": "/api/autopilot?route=telegram"
+      "destination": "/api/studio/autopilot?route=telegram"
     }
   ]
 }

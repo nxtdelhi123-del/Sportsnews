@@ -167,7 +167,7 @@ test('autopilot: the three routes share one function and stay within Vercel Hobb
   assert.ok(fns('api').length <= 12, `${fns('api').length} functions`);
   const { rewrites } = JSON.parse(readFileSync('vercel.json', 'utf8'));
   assert.deepEqual(rewrites.map((r) => r.source).sort(), ['/api/cron/studio', '/api/studio/media', '/api/telegram']);
-  const { default: one } = await import('../api/autopilot.js');
+  const { default: one } = await import('../api/studio/autopilot.js');
   const res = mockRes();
   await one({ query: { route: 'cron' }, headers: {} }, res);
   assert.equal(res.statusCode, 401);
