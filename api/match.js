@@ -1,5 +1,5 @@
 import { LEAGUE_BY_PATH, SOFA_SLUGS } from '../lib/sources.js';
-import { espnMatch } from '../lib/espn.js';
+import { espnMatch, soccerLeague } from '../lib/espn.js';
 import { sofaMatch } from '../lib/sofa.js';
 import { cricketMatch, fetchCricket } from '../lib/cricket.js';
 import { memoize, setCache, sendJSON, siteUrl, slim } from '../lib/http.js';
@@ -27,11 +27,11 @@ export function loadMatch(l, id) {
       const find = (d) => d.matches.find((m) => m.source === 'sportsdb' && m.id === id);
       return find(await getScores('all')) || find(await getScores(l.slice(5))) || null;
     }
-    return espnMatch(LEAGUE_BY_PATH.get(l), id);
+    return espnMatch(LEAGUE_BY_PATH.get(l) || soccerLeague(l.slice(7)), id);
   });
 }
 
-const validLeague = (l) => l === 'cricket' || LEAGUE_BY_PATH.has(l) || (l.startsWith('sofa/') && SOFA_SLUGS.has(l.slice(5))) || (l.startsWith('tsdb/') && l.slice(5) in TSDB_SPORTS) || /^cricket-espn\/[\w.-]{1,40}$/.test(l);
+const validLeague = (l) => l === 'cricket' || LEAGUE_BY_PATH.has(l) || /^soccer\/[a-z0-9][a-z0-9._-]{1,40}$/.test(l) || (l.startsWith('sofa/') && SOFA_SLUGS.has(l.slice(5))) || (l.startsWith('tsdb/') && l.slice(5) in TSDB_SPORTS) || /^cricket-espn\/[\w.-]{1,40}$/.test(l);
 
 export default async function handler(req, res) {
   const { l = '', id = '', format = 'json', tz } = req.query || {};
