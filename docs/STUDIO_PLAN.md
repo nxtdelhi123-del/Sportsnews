@@ -309,7 +309,7 @@ Done when: `/studio` shows today's top 20 stories for each brand, each with a re
 8. Tests: scoring cases per brand, writer output validation (schema + rules),
    one render smoke test per template.
 
-### Phase 2 — Review desk and scheduling (1 session)
+### Phase 2 — Review desk and scheduling (1 session) — fast path DONE 2026-11-12 (autopilot, `docs/AUTOPILOT.md`): Telegram one-tap approve; the desk queue UI is still to do
 Done when: the owner can approve, edit (headline/caption/time) and schedule packs
 from the phone, and the queue survives reloads.
 1. `lib/studio/store.js` on Vercel KV: packs, queue states
@@ -322,7 +322,7 @@ from the phone, and the queue survives reloads.
 4. Push notification when a VIMP story is drafted (web push, or a Telegram bot message
    with the poster and an Approve link; Telegram is simplest on a phone).
 
-### Phase 3 — Posting automation (½ session + owner's Meta setup)
+### Phase 3 — Posting automation (½ session + owner's Meta setup) — image posts DONE 2026-11-12 (autopilot); carousels and reels still to do
 Done when: an approved pack is published to the right Instagram account at its time,
 and the post's permalink and first-24h insights are stored.
 - Owner setup (one time, ~30 min, instructions in §6).
