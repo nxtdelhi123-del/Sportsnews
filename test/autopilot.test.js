@@ -172,3 +172,35 @@ test('autopilot: the three routes share one function and stay within Vercel Hobb
   await one({ query: { route: 'cron' }, headers: {} }, res);
   assert.equal(res.statusCode, 401);
 });
+
+import { upscaleImageUrl, imageSize, findPhotos } from '../lib/studio/photos.js';
+import { clearMemo } from '../lib/http.js';
+import { Resvg } from '@resvg/resvg-js';
+
+const pngOf = (w, hh) => Buffer.from(new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}"><rect width="100%" height="100%" fill="#345"/></svg>`).render().asPng());
+
+test('photos: thumbnails are asked for at full size, and sizes are read from the bytes', () => {
+  assert.equal(upscaleImageUrl('https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/x.jpg'), 'https://ichef.bbci.co.uk/ace/standard/1536/cpsprodpb/x.jpg');
+  assert.match(upscaleImageUrl('https://a.espncdn.com/combiner/i?img=%2Fp.jpg&w=180&h=101'), /w=1600&h=900/);
+  assert.equal(upscaleImageUrl('https://e0.365dm.com/26/11/768x432/x.jpg'), 'https://e0.365dm.com/26/11/1600x900/x.jpg');
+  assert.equal(upscaleImageUrl('https://example.com/a.jpg'), 'https://example.com/a.jpg');
+  assert.deepEqual(imageSize(`data:image/png;base64,${pngOf(1200, 800).toString('base64')}`), { w: 1200, h: 800 });
+});
+
+test('photos: the article’s sharp share picture beats the feed’s thumbnail', async () => {
+  clearMemo();
+  const big = pngOf(1400, 900);
+  const small = pngOf(240, 135);
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u === 'https://news.example/story') return new Response('<html><head><meta property="og:image" content="https://img.example/big.png"></head></html>', { headers: { 'content-type': 'text/html' } });
+    if (u === 'https://img.example/big.png') return new Response(big, { headers: { 'content-type': 'image/png' } });
+    if (u === 'https://img.example/thumb.png') return new Response(small, { headers: { 'content-type': 'image/png' } });
+    return new Response('nope', { status: 404 });
+  };
+  const got = await findPhotos({ kind: 'news', title: 'x', link: 'https://news.example/story', image: 'https://img.example/thumb.png', source: 'Example' });
+  assert.equal(imageSize(got.hero).w, 1400);
+  clearMemo();
+  const fallback = await findPhotos({ kind: 'news', title: 'x', link: 'https://news.example/missing', image: 'https://img.example/thumb.png', source: 'Example' });
+  assert.equal(imageSize(fallback.hero).w, 240, 'a soft picture is still better than none');
+});
