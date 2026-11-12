@@ -29,6 +29,10 @@ Brand badges: put `tsb-badge.png` and `musc-crest.png` (transparent PNG, square)
 | `GET /api/studio/render?brand=&key=&size=post\|story\|square&template=&w=` | PNG of a pack; `&json=1` returns the pack with Claude-written words |
 | `POST /api/studio/feedback` | `{ brand, key, decision: approve\|reject\|edit }` |
 
+## Autopilot (news → phone → Instagram)
+
+Every 1–2 minutes the autopilot sends each big new @thesportsbinge story to the owner's Telegram as a finished poster with its caption (exactly five hashtags) and ✅ Post now / ✖ Skip buttons. One tap publishes it to Instagram through the Graph API. Setup and settings: `docs/AUTOPILOT.md`.
+
 ## API
 
 | Endpoint | Description |
