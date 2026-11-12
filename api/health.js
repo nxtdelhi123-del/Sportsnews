@@ -1,4 +1,4 @@
-import { ESPN_LEAGUES, NEWS_FEEDS, SOFA_SPORTS, CRICINFO_CURRENT } from '../lib/sources.js';
+import { ESPN_LEAGUES, NEWS_FEEDS, SOFA_SPORTS, CRICINFO_CURRENT, sofascoreOn } from '../lib/sources.js';
 import { errorText, fetchWithTimeout, nextSlot, sendJSON } from '../lib/http.js';
 import { TSDB_SPORTS } from '../lib/sportsdb.js';
 import { ESPN_CRICKET_URLS } from '../lib/espn-cricket.js';
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     now: new Date().toISOString(),
     nextUpdateAt: new Date(nextSlot()).toISOString(),
     region: process.env.VERCEL_REGION || null,
-    sources: { espnCompetitions: ESPN_LEAGUES.length, sofascoreSports: Object.keys(SOFA_SPORTS).length, sportsDbSports: Object.keys(TSDB_SPORTS).length, newsFeeds: NEWS_FEEDS.length },
+    sources: { espnCompetitions: ESPN_LEAGUES.length, sofascoreSports: sofascoreOn() ? Object.keys(SOFA_SPORTS).length : 'off', sportsDbSports: Object.keys(TSDB_SPORTS).length, newsFeeds: NEWS_FEEDS.length },
   };
   if (req.query?.deep) {
     const items = (b) => b?.events?.length ?? b?.matches?.length ?? 0;
@@ -39,8 +39,12 @@ export default async function handler(req, res) {
       probe('ESPN single day', `https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/scoreboard?dates=${today().replace(/-/g, '')}`, items),
       probe('ESPN NBA', 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard', items),
       probe('ESPN cricket', ESPN_CRICKET_URLS[0], (b) => (b?.sports || []).flatMap((s) => s.leagues || []).reduce((n, l) => n + (l.events?.length || 0), 0)),
-      probe('Sofascore (api.)', 'https://api.sofascore.com/api/v1/sport/football/events/live', items, { headers: SOFA }),
-      probe('Sofascore (www.)', 'https://www.sofascore.com/api/v1/sport/basketball/events/live', items, { headers: SOFA }),
+      ...(sofascoreOn()
+        ? [
+            probe('Sofascore (api.)', 'https://api.sofascore.com/api/v1/sport/football/events/live', items, { headers: SOFA }),
+            probe('Sofascore (www.)', 'https://www.sofascore.com/api/v1/sport/basketball/events/live', items, { headers: SOFA }),
+          ]
+        : []),
       probe('TheSportsDB', `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${today()}&s=Cricket`, items),
       probe('ESPNcricinfo API', CRICINFO_CURRENT, items, { headers: BROWSER }),
       probe('ESPNcricinfo RSS', CRICINFO_RSS, (t) => (t.match(/<item/g) || []).length, { as: 'text', headers: BROWSER }),
