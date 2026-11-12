@@ -109,7 +109,7 @@ test('autopilot: without Instagram set up, the draft says so and has no Post but
 test('autopilot: tapping Post publishes once; Skip blocks it', async () => {
   const { drafted } = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
   const id = drafted[0].id;
-  const { default: webhook } = await import('../api/telegram.js');
+  const { default: webhook } = await import('../lib/studio/routes/telegram.js');
   const tap = (data, chat = 42, secret = 's3cret') => {
     const res = mockRes();
     return webhook({ method: 'POST', headers: { 'x-telegram-bot-api-secret-token': secret }, body: { callback_query: { id: 'q', data, message: { message_id: 77, chat: { id: chat } } } } }, res).then(() => res);
@@ -136,7 +136,7 @@ test('autopilot: tapping Post publishes once; Skip blocks it', async () => {
 test('autopilot: the media link renders a 1080×1350 JPEG; bad signatures are refused', async () => {
   const { drafted } = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
   const id = drafted[0].id;
-  const { default: media } = await import('../api/studio/media.js');
+  const { default: media } = await import('../lib/studio/routes/media.js');
   let res = mockRes();
   await media({ query: { id, sig: 'f'.repeat(32) }, headers: {} }, res);
   assert.equal(res.statusCode, 403);
@@ -153,10 +153,22 @@ test('autopilot: the media link renders a 1080×1350 JPEG; bad signatures are re
 });
 
 test('autopilot: the cron endpoint needs the secret', async () => {
-  const { default: cron } = await import('../api/cron/studio.js');
+  const { default: cron } = await import('../lib/studio/routes/cron.js');
   const res = mockRes();
   await cron({ query: {}, headers: { authorization: 'Bearer nope' } }, res);
   assert.equal(res.statusCode, 401);
   assert.equal(await claim('k', 10), true);
   assert.equal(await claim('k', 10), false);
+});
+
+test('autopilot: the three routes share one function and stay within Vercel Hobby’s 12', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const fns = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? fns(`${dir}/${e.name}`) : e.name.endsWith('.js') ? [e.name] : []));
+  assert.ok(fns('api').length <= 12, `${fns('api').length} functions`);
+  const { rewrites } = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  assert.deepEqual(rewrites.map((r) => r.source).sort(), ['/api/cron/studio', '/api/studio/media', '/api/telegram']);
+  const { default: one } = await import('../api/autopilot.js');
+  const res = mockRes();
+  await one({ query: { route: 'cron' }, headers: {} }, res);
+  assert.equal(res.statusCode, 401);
 });

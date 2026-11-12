@@ -95,7 +95,8 @@ You can also send `/check` to the bot to run a pass right away.
 | `lib/studio/store.js` | Upstash Redis REST, or memory when not configured |
 | `lib/studio/telegram.js` | sending drafts and button handling |
 | `lib/studio/instagram.js` | Graph API: container, then status, then publish, then permalink |
-| `api/cron/studio.js` | one pass, protected by the secret |
-| `api/telegram.js` | bot webhook (secret header, owner's chat only) |
-| `api/studio/media.js` | signed public JPEG of a draft (what Telegram and Instagram fetch) |
+| `api/autopilot.js` | one Vercel function for the three routes below (Hobby allows 12 functions); `vercel.json` rewrites them here |
+| `lib/studio/routes/cron.js` | `/api/cron/studio`: one pass, protected by the secret |
+| `lib/studio/routes/telegram.js` | `/api/telegram`: bot webhook (secret header, owner's chat only) |
+| `lib/studio/routes/media.js` | `/api/studio/media`: signed public JPEG of a draft (what Telegram and Instagram fetch) |
 | `test/autopilot.test.js` | the flow end to end with mocked Telegram and Instagram |
