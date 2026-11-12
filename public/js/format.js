@@ -260,7 +260,9 @@ export function toPoster(m, opts = {}) {
   if (ev.length) L.push('', 'KEY MOMENTS:', ...ev.slice(0, 25).map((e) => `• ${e.minute ? e.minute + ' ' : ''}${e.type}${e.player ? ' — ' + e.player : ''}${e.team ? ` (${e.team})` : ''}${e.score ? ` [${e.score}]` : ''}`));
   const st = statLines(m);
   if (st.length) L.push('', `MATCH STATS (${m.home?.name} – ${m.away?.name}):`, ...st.map((x) => '• ' + x));
-  if (d.lineups?.length) L.push('', 'LINE-UPS:', ...d.lineups.map((l) => `${l.team}${l.formation ? ` (${l.formation})` : ''}: ${l.starters.join(', ')}`));
+  // before kick-off ESPN lists the squads with no starters yet: no line-ups to show
+  const lineups = (d.lineups || []).filter((l) => l.starters?.length);
+  if (lineups.length) L.push('', 'LINE-UPS:', ...lineups.map((l) => `${l.team}${l.formation ? ` (${l.formation})` : ''}: ${l.starters.join(', ')}`));
   if (d.playerLeaders?.length) L.push('', 'TOP PERFORMERS:', ...d.playerLeaders.map((x) => '• ' + x));
   if (d.officials?.length) L.push(`OFFICIALS: ${d.officials.join('; ')}`);
   if (m.broadcasts?.length) L.push(`TV / STREAM: ${m.broadcasts.join(', ')}`);

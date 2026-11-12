@@ -211,6 +211,7 @@ function renderChips() {
     `<button class="chip${state.sport === k ? ' active' : ''}" data-sport="${k}"><span>${emoji}</span>${esc(label)}${liveN ? `<small class="live-n" title="${liveN} live">${liveN}</small>` : ''}</button>`;
   $('#sportChips').innerHTML =
     chip('all', '🌍', 'All sports', totalLive) +
+    `<a class="chip utd-chip" href="/united" title="Manchester United only">🔴 Man Utd</a>` +
     Object.entries(SPORTS)
       .filter(([k]) => !NEWS_ONLY.has(k) || newsCount[k] || live[k])
       .map(([k, v]) => chip(k, v.emoji, v.label, live[k]))

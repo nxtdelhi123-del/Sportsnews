@@ -488,3 +488,89 @@ code { background: var(--card-2); padding: 1px 6px; border-radius: 6px; font-siz
   .mc-row img, .mc-row .badge { width: 32px; height: 32px; }
   .mc-row span { grid-column: 2; text-align: left; font-size: 22px; }
 }
+
+/* ---------- Manchester United desk (/united) ---------- */
+.utd-page { --utd: #da020e; --utd-gold: #fbe122; }
+.utd-hero {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px;
+  margin: 16px 24px 14px; padding: 22px 26px; border-radius: 22px; color: #fff;
+  background:
+    radial-gradient(700px 260px at 0% 0%, rgba(251, 225, 34, 0.18), transparent 60%),
+    linear-gradient(120deg, #7a0007 0%, var(--utd) 45%, #2a0003 100%);
+  box-shadow: 0 18px 50px rgba(218, 2, 14, 0.35);
+}
+.utd-hero::after { content: ""; position: absolute; right: -60px; top: -40px; width: 320px; height: 320px; border-radius: 50%; border: 40px solid rgba(255, 255, 255, 0.06); }
+.utd-crest { width: 110px; height: 110px; object-fit: contain; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.45)); flex: none; }
+.utd-kicker { margin: 0; font-family: var(--display); font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; font-size: 13px; color: var(--utd-gold); }
+.utd-title h1 { margin: 2px 0 6px; font-family: var(--display); font-size: clamp(30px, 5vw, 54px); line-height: 1; text-transform: uppercase; letter-spacing: 0.03em; }
+.utd-standing { margin: 0; font-size: 14px; line-height: 1.9; }
+.utd-standing .sep { opacity: 0.4; margin: 0 10px; }
+.form { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 4px; border-radius: 5px; font-style: normal; font-weight: 700; font-size: 11px; color: #fff; }
+.form-W { background: #16a34a; }
+.form-D { background: #6b7280; }
+.form-L { background: #dc2626; }
+.utd-spotlight { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; padding: 0 24px 16px; }
+.utd-big { padding: 16px 18px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line-strong); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; flex-direction: column; gap: 8px; }
+.utd-big.state-in { border-color: rgba(225, 6, 0, 0.6); box-shadow: var(--glow); }
+.utd-big .mc-board { margin: 10px 0 4px; }
+.utd-big .mc-team img, .utd-big .mc-team .badge { width: 56px; height: 56px; }
+.utd-big .mc-team b { font-size: 18px; }
+.utd-big .mc-score span { font-size: 46px; }
+.utd-countdown { display: flex; justify-content: center; gap: 10px; }
+.utd-countdown span { display: grid; justify-items: center; min-width: 56px; padding: 6px 8px; border-radius: 10px; background: var(--card-2); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.utd-countdown b { font-family: var(--display); font-size: 24px; color: var(--text); letter-spacing: 0; }
+.utd-month { font-family: var(--display); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 16px 0 8px; }
+.utd-month small { opacity: 0.7; }
+.utd-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 8px; border-bottom: 1px solid var(--line); border-radius: 10px; }
+.utd-row:hover { background: var(--card); }
+.utd-row.state-in { background: rgba(225, 6, 0, 0.08); }
+.utd-date { display: grid; justify-items: center; line-height: 1; }
+.utd-date b { font-family: var(--display); font-size: 22px; }
+.utd-date span { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.08em; }
+.utd-teams { display: grid; gap: 3px; min-width: 0; }
+.utd-comp { font-size: 11px; color: var(--muted); }
+.utd-line { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; }
+.utd-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.utd-line .us { font-weight: 700; color: var(--text); }
+.utd-line img, .utd-line .badge { width: 22px; height: 22px; object-fit: contain; flex: none; }
+.utd-res { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 20px; white-space: nowrap; }
+.utd-res .status { font-family: inherit; font-size: 11px; }
+.utd-time { font-size: 15px; color: var(--muted); }
+.utd-acts { display: flex; gap: 2px; }
+.utd-acts .icon-btn { text-decoration: none; font-size: 16px; padding: 4px 6px; border-radius: 8px; }
+.utd-acts .icon-btn:hover { background: var(--card-2); }
+.utd-table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.utd-table th { font-family: var(--display); font-weight: 700; color: var(--muted); letter-spacing: 0.08em; font-size: 12px; padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--line-strong); }
+.utd-table td { padding: 7px 4px; text-align: center; border-bottom: 1px solid var(--line); }
+.utd-table .l { text-align: left; }
+.utd-table td.l { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.utd-table td.l img, .utd-table td.l .badge { width: 20px; height: 20px; object-fit: contain; }
+.utd-table tr.us td { background: rgba(218, 2, 14, 0.18); font-weight: 700; }
+.utd-table tr.us td:first-child { box-shadow: inset 3px 0 0 var(--utd); }
+.utd-table tr.cl td:first-child { color: #3b82f6; font-weight: 700; }
+.utd-table tr.rel td:first-child { color: #dc2626; font-weight: 700; }
+.utd-squad { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.utd-player { display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto; column-gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+.utd-player .num { grid-row: span 2; display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--utd-gold); background: linear-gradient(160deg, #7a0007, var(--utd)); border-radius: 9px; }
+.utd-player .pname { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.utd-player .pmeta { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.utd-player .pmeta img { border-radius: 50%; object-fit: cover; }
+.utd-tabs { margin-top: -4px; }
+.utd-switch { display: none; }
+@media (max-width: 960px) {
+  .utd-hero { margin: 12px; padding: 16px; gap: 14px; }
+  .utd-crest { width: 70px; height: 70px; }
+  .utd-spotlight { padding: 0 12px 12px; grid-template-columns: 1fr; }
+  .utd-switch { display: flex; }
+  body[data-view="matches"] .utd-layout .news-panel { display: none; }
+  body[data-view="news"] .utd-layout .utd-main { display: none; }
+  .utd-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .utd-acts { grid-column: 2 / -1; justify-content: flex-end; margin-top: -6px; }
+  .utd-big .mc-score span { font-size: 38px; }
+  .utd-countdown span { min-width: 48px; }
+}
+/* the newsroom's link to the United desk */
+.btn.utd-link { background: linear-gradient(180deg, #ff1a1a, #da020e 55%, #8a0009); }
+.utd-chip { text-decoration: none; border-color: rgba(218, 2, 14, 0.6); }
+.utd-chip:hover { background: rgba(218, 2, 14, 0.15); }
+@media (max-width: 480px) { .refresh .btn.ghost[href="/studio"] { display: none; } }

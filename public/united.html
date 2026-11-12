@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manchester United · NXT Sports</title>
+  <meta name="description" content="Manchester United only: the live match, fixtures and results in every competition, the Premier League table, the squad and every United headline.">
+  <meta name="theme-color" content="#da020e">
+  <meta property="og:title" content="Manchester United · NXT Sports">
+  <meta property="og:description" content="Live match, fixtures, results, table, squad and United headlines.">
+  <meta property="og:image" content="/img/og.jpg">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="module" src="/js/united.js"></script>
+</head>
+<body class="utd-page">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="NXT Sports home">
+      <picture>
+        <source srcset="/img/nxt-mark-dark.png" media="(prefers-color-scheme: dark)">
+        <img class="brand-mark" src="/img/nxt-mark.png" alt="" width="95" height="56">
+      </picture>
+      <picture>
+        <source srcset="/img/nxt-word-dark.png" media="(prefers-color-scheme: dark)">
+        <img class="brand-word" src="/img/nxt-word.png" alt="NXT" width="110" height="32">
+      </picture>
+      <span class="brand-sub">
+        <span class="sports-word">Sports</span>
+        <span class="tagline"><span class="logo" aria-hidden="true">●</span> Manchester United desk</span>
+      </span>
+    </a>
+    <div class="refresh">
+      <div class="refresh-meta"><span id="updated">Loading…</span><span id="countdown" class="muted"></span></div>
+      <a class="btn ghost" href="/" title="Every sport">🌍 Newsroom</a>
+      <a class="btn ghost" href="/studio?brand=musc" title="MUSC posts">🎨 Studio</a>
+    </div>
+  </header>
+
+  <section class="utd-hero" aria-label="Manchester United">
+    <img id="utdCrest" class="utd-crest" src="https://a.espncdn.com/i/teamlogos/soccer/500/360.png" alt="" width="120" height="120" referrerpolicy="no-referrer">
+    <div class="utd-title">
+      <p class="utd-kicker">MUFC updates only</p>
+      <h1>Manchester United</h1>
+      <p id="utdStanding" class="utd-standing"></p>
+    </div>
+  </section>
+
+  <section class="utd-spotlight" id="utdSpotlight" aria-label="Match"><div class="skeleton"></div><div class="skeleton"></div></section>
+
+  <div class="view-switch utd-switch" role="tablist">
+    <button role="tab" class="active" data-view="matches">Matches</button>
+    <button role="tab" data-view="news">News</button>
+  </div>
+
+  <main class="layout utd-layout">
+    <section class="panel utd-main" aria-label="Fixtures, results, table and squad">
+      <nav class="mc-tabs utd-tabs" id="utdTabs">
+        <button data-tab="fixtures" class="active">Fixtures</button>
+        <button data-tab="results">Results</button>
+        <button data-tab="table">Table</button>
+        <button data-tab="squad">Squad</button>
+      </nav>
+      <div id="utdPanel"><div class="skeleton"></div><div class="skeleton"></div></div>
+    </section>
+
+    <aside class="panel news-panel" aria-labelledby="utdNewsTitle">
+      <div class="panel-head">
+        <h2 id="utdNewsTitle">United news <span id="utdNewsCount" class="count"></span></h2>
+      </div>
+      <div id="utdNews" class="news"><div class="skeleton"></div><div class="skeleton"></div></div>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <p>Manchester United only. Data: ESPN (fixtures, results, live scores, table, squad) and United headlines from BBC Sport, Google News and the newsroom's feeds. Live matches refresh every minute. Every match and headline has a copy button with a ready-made MUSC prompt.</p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
