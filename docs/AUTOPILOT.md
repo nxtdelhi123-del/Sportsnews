@@ -42,11 +42,12 @@ autopilot always posts 4:5.
 `lib/studio/editor.js` decides which stories are worth a post. The rules in `score.js` are a
 first pass. When an AI key is set, the bar drops to a score of 2 and the AI reads up to 15
 fresh stories per run like the page's editor would: Claude with `ANTHROPIC_API_KEY`, or
-Google's Gemini with `GEMINI_API_KEY` (free tier; it tries `gemini-3.5-flash`, then `gemini-3.1-flash-lite`, `gemini-3-flash-preview` and `gemini-flash-latest`, skipping any Google has retired; `GEMINI_MODEL` is tried first when set). It is given the page's guide
+Google's Gemini with `GEMINI_API_KEY` (free tier; it tries `gemini-3.5-flash`, then `gemini-3.1-flash-lite`, `gemini-3-flash-preview` and `gemini-flash-latest`, skipping any Google has retired, is overloaded or is out of free quota; `GEMINI_MODEL` is tried first when set). It is given the page's guide
 (`editor` in `lib/studio/brands/tsb.js`) and the editor's last Post / Skip / "I posted it" taps
 (kept in the store as `ap:taste:<brand>`), and returns post or not, P1/P2/P3 and a one-line
 reason, which the draft shows as 🧠. Stories it turns down are not asked about again. If
-the AI is unavailable or out of free quota the rules decide, and a sport and post type the editor has skipped three
+no model answers, only stories scoring 8+ go out on the rules alone and the rest wait for the
+next run. Without any AI key the rules decide, and a sport and post type the editor has skipped three
 times without ever posting is held back.
 
 ## One-time setup (about 10 minutes)
