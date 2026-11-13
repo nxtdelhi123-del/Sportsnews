@@ -158,16 +158,43 @@ test('brain: Gemini’s free tier works without a Claude key', async () => {
     return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ verdicts }) }] } }] }), { headers: { 'content-type': 'application/json' } });
   };
   try {
-    const { judge, brainKind } = await import('../lib/studio/editor.js');
+    const { judge, brainKind, resetGeminiModel } = await import('../lib/studio/editor.js');
+    resetGeminiModel();
     assert.equal(brainKind(), 'gemini');
     const got = await judge(BRANDS.tsb, [cand(story, 4), cand({ ...story, id: 'g', title: 'Neeraj Chopra gold' }, 3, 'medal')]);
-    assert.match(sent.url, /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash:generateContent$/);
+    assert.match(sent.url, /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-3\.5-flash:generateContent$/);
     assert.equal(sent.headers['x-goog-api-key'], 'g', 'the key goes in a header, not the URL');
     assert.match(sent.body.systemInstruction.parts[0].text, /news editor of The Sports Binge/);
     assert.deepEqual(got.map((c) => [c.key, c.priority, c.why, c.by]), [['news:g', 'P1', 'Indian gold', 'gemini']]);
     globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: 'quota exceeded' } }), { status: 429 });
     const fallback = await judge(BRANDS.tsb, [cand(story, 4)], { log: { error() {} } });
     assert.deepEqual(fallback.map((c) => c.by), ['rules'], 'out of free quota: the rules take over');
+  } finally {
+    globalThis.fetch = real;
+    delete process.env.GEMINI_API_KEY;
+  }
+});
+
+test('brain: a Gemini model Google has retired is skipped for the next one', async () => {
+  process.env.GEMINI_API_KEY = 'g';
+  const real = globalThis.fetch;
+  const tried = [];
+  globalThis.fetch = async (url) => {
+    const model = String(url).match(/models\/([^:]+):/)[1];
+    tried.push(model);
+    if (model !== 'gemini-3.1-flash-lite') return new Response(JSON.stringify({ error: { message: `This model models/${model} is no longer available to new users.` } }), { status: 404 });
+    const verdicts = [{ n: 0, post: true, priority: 'P2', why: 'ok' }];
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ verdicts }) }] } }] }));
+  };
+  try {
+    const { judge, resetGeminiModel } = await import('../lib/studio/editor.js');
+    resetGeminiModel();
+    const got = await judge(BRANDS.tsb, [cand(story, 4)]);
+    assert.deepEqual(got.map((c) => c.by), ['gemini']);
+    assert.deepEqual(tried, ['gemini-3.5-flash', 'gemini-3.1-flash-lite']);
+    tried.length = 0;
+    await judge(BRANDS.tsb, [cand(story, 4)]);
+    assert.deepEqual(tried, ['gemini-3.1-flash-lite'], 'the working model is remembered');
   } finally {
     globalThis.fetch = real;
     delete process.env.GEMINI_API_KEY;
