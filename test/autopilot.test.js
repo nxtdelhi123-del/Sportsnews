@@ -152,13 +152,37 @@ test('autopilot: the media link renders a 1080×1350 JPEG; bad signatures are re
   assert.deepEqual([b.readUInt16BE(i + 7), b.readUInt16BE(i + 5)], [1080, 1350]);
 });
 
-test('autopilot: the cron endpoint needs the secret', async () => {
+test('autopilot: the cron endpoint runs at most once every 45 seconds', async () => {
   const { default: cron } = await import('../lib/studio/routes/cron.js');
-  const res = mockRes();
-  await cron({ query: {}, headers: { authorization: 'Bearer nope' } }, res);
-  assert.equal(res.statusCode, 401);
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  let res = mockRes();
+  await cron({ query: {}, headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, /TELEGRAM_BOT_TOKEN not set/);
+  res = mockRes();
+  await cron({ query: {}, headers: {} }, res);
+  assert.match(res.body, /ran less than 45 s ago/);
   assert.equal(await claim('k', 10), true);
   assert.equal(await claim('k', 10), false);
+});
+
+test('autopilot: only a bot token is needed; the first /start claims the bot', async () => {
+  delete process.env.TELEGRAM_CHAT_ID;
+  delete process.env.AUTOPILOT_SECRET;
+  assert.equal(ap.secret().length, 48, 'secret derived from the bot token');
+  const noOwner = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  assert.match(noOwner.errors.join(' '), /Send \/start/);
+  const hook = calls.find((c) => c.url.endsWith('/setWebhook'));
+  assert.equal(hook.body.url, 'https://site.test/api/telegram');
+  assert.equal(hook.body.secret_token, ap.secret());
+  const { default: webhook } = await import('../lib/studio/routes/telegram.js');
+  const start = (chat) => webhook({ method: 'POST', headers: { 'x-telegram-bot-api-secret-token': ap.secret() }, body: { message: { text: '/start', chat: { id: chat }, from: { first_name: 'N' } } } }, mockRes());
+  await start(555);
+  await start(666);
+  assert.equal(calls.filter((c) => c.url.endsWith('/sendMessage') && /Connected/.test(c.body.text)).map((c) => c.body.chat_id).join(), '555', 'only the first chat is welcomed');
+  const run = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  assert.equal(run.drafted.length, 1);
+  assert.equal(calls.find((c) => c.url.endsWith('/sendPhoto')).body.chat_id, '555');
 });
 
 test('autopilot: the three routes share one function and stay within Vercel Hobby’s 12', async () => {
@@ -169,8 +193,8 @@ test('autopilot: the three routes share one function and stay within Vercel Hobb
   assert.deepEqual(rewrites.map((r) => r.source).sort(), ['/api/cron/studio', '/api/studio/media', '/api/telegram']);
   const { default: one } = await import('../api/studio/autopilot.js');
   const res = mockRes();
-  await one({ query: { route: 'cron' }, headers: {} }, res);
-  assert.equal(res.statusCode, 401);
+  await one({ query: { route: 'nope' }, headers: {} }, res);
+  assert.equal(res.statusCode, 404);
 });
 
 import { upscaleImageUrl, imageSize, findPhotos } from '../lib/studio/photos.js';

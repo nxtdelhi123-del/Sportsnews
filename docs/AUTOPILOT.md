@@ -37,55 +37,29 @@ headlines.
 The poster is 1080×1350 JPEG. Instagram's API rejects the 3:4 grid-tile size, so the
 autopilot always posts 4:5.
 
-## One-time setup (about 45 minutes)
+## One-time setup (about 10 minutes)
 
-### 1. A store (free)
-In Vercel, open **Project → Storage → Create → Upstash for Redis** (free plan) and
-connect it to this project. That adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`. The
-autopilot uses it to remember what it has already sent.
+1. **Store:** Vercel → Project → Storage → Create → **Upstash for Redis** (free), connected to this
+   project. That adds `KV_REST_API_URL` / `KV_REST_API_TOKEN`.
+2. **Bot:** in Telegram, message **@BotFather**, send `/newbot`, copy the token.
+3. **One setting:** Vercel → Settings → Environment Variables → `TELEGRAM_BOT_TOKEN` = the token. Redeploy.
+4. **Say hello:** open your bot in Telegram and send `/start`. The first chat to do this becomes the
+   owner (or set `TELEGRAM_CHAT_ID` to pin it). The bot replies "Connected".
 
-### 2. The Telegram bot (5 minutes)
-1. In Telegram, message **@BotFather** and send `/newbot`. Copy the token.
-2. Send any message to your new bot. Then open
-   `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy `chat.id`.
+That's all. The site registers the bot's webhook itself, `AUTOPILOT_SECRET` is derived from the token
+when not set, `PUBLIC_URL` defaults to the production domain, and the GitHub Actions workflow
+`.github/workflows/autopilot.yml` wakes the autopilot every 5 minutes (GitHub runs can start a few
+minutes late). For one-minute checks, add a free cron-job.org job on
+`https://sportsnews-delta.vercel.app/api/cron/studio` (no key needed: a pass only ever messages the
+owner, never repeats a story, and runs at most every 45 s). `/check` in the chat runs a pass at once.
 
-### 3. Vercel environment variables
-Set these in **Project → Settings → Environment Variables**, then redeploy.
+Optional: `ANTHROPIC_API_KEY` (Claude writes the words; formulas otherwise).
 
-| Variable | Value |
-| --- | --- |
-| `AUTOPILOT_SECRET` | any long random string (e.g. from `openssl rand -hex 24`) |
-| `TELEGRAM_BOT_TOKEN` | from BotFather |
-| `TELEGRAM_CHAT_ID` | your chat id |
-| `PUBLIC_URL` | `https://sportsnews-delta.vercel.app` |
-| `ANTHROPIC_API_KEY` | optional, but recommended: Claude writes the words; formulas otherwise |
-| `IG_TSB_USER_ID`, `IG_TSB_TOKEN` | from step 5; until then drafts arrive without a Post button |
-
-### 4. Connect the buttons
-Open this URL once, with your values filled in:
-
-```
-https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://sportsnews-delta.vercel.app/api/telegram&secret_token=<AUTOPILOT_SECRET>
-```
-
-### 5. Instagram (about 30 minutes)
-Follow §6 of `docs/STUDIO_PLAN.md`:
-1. Switch the page to a Business or Creator account and link it to a Facebook Page.
-2. Create a Meta app.
-3. Get a long-lived token with `instagram_content_publish`.
-4. Put the user id and token in `IG_TSB_USER_ID` and `IG_TSB_TOKEN`.
-
-The long-lived token lasts 60 days. Put a reminder in your calendar to renew it.
-
-### 6. Run it every minute
-Vercel's free plan only runs crons once a day, so use **cron-job.org** (free):
-1. Create a job for the URL `https://sportsnews-delta.vercel.app/api/cron/studio`, every 1 minute.
-2. Under Advanced, add the header `Authorization: Bearer <AUTOPILOT_SECRET>`.
-
-On Vercel Pro you can use Vercel Cron instead. Add `"crons": [{ "path": "/api/cron/studio", "schedule": "* * * * *" }]`
-to `vercel.json` and set `CRON_SECRET` to the same value.
-
-You can also send `/check` to the bot to run a pass right away.
+### Instagram (later, about 30 minutes)
+Follow §6 of `docs/STUDIO_PLAN.md`: Business/Creator account linked to a Facebook Page → Meta app →
+long-lived token with `instagram_content_publish` → `IG_TSB_USER_ID` and `IG_TSB_TOKEN` in Vercel.
+The long-lived token lasts 60 days; renew it before then. Until it is set, drafts arrive without a
+Post button and the owner posts them by hand.
 
 ## Files
 
