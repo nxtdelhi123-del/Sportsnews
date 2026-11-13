@@ -607,7 +607,8 @@ test('studio: every template renders a PNG', async () => {
   }
   const story = await renderPack(packFor(BRANDS.tsb, esp, 'result'), { size: 'story' });
   assert.equal(story.height, 1920);
-  assert.equal(pickTemplate({ brand: BRANDS.tsb, type: 'result', story: esp }), 'tsb-cream');
+  assert.equal(pickTemplate({ brand: BRANDS.tsb, type: 'result', story: esp }), 'tsb-binge', 'the house post is the TSB default');
+  assert.equal(pickTemplate({ brand: BRANDS.tsb, type: 'result', story: esp, classic: true }), 'tsb-cream');
   assert.equal(pickTemplate({ brand: BRANDS.musc, type: 'preview', story: esp }), 'musc-matchday');
   assert.ok(Object.keys(TEMPLATES).length >= 4);
 });
@@ -879,7 +880,8 @@ test('studio: render draws a pasted story and refuses empty text', async () => {
   assert.equal(res.headers['content-type'], 'image/png');
   res = mockRes();
   await render({ method: 'POST', body: { brand: 'tsb', paste: '⚽ Premier League\nArsenal 2 – 1 Chelsea\nStatus: FT', json: 1 }, query: {}, headers: { host: 'x' } }, res);
-  assert.equal(JSON.parse(res.body).template, 'tsb-cream');
+  assert.equal(JSON.parse(res.body).template, 'tsb-binge');
+  assert.ok(JSON.parse(res.body).templates.includes('tsb-cream'), 'the classic layout stays on the desk');
   res = mockRes();
   await render({ method: 'POST', body: { brand: 'tsb', paste: '   ', json: 1 }, query: {}, headers: { host: 'x' } }, res);
   assert.equal(res.statusCode, 400);
@@ -924,9 +926,13 @@ test('studio: type fills its measure and breaks lines like an editor', () => {
 
 test('studio: every kind has its own layout, with alternatives on the desk', async () => {
   const b = { tsb: BRANDS.tsb, musc: BRANDS.musc };
-  const n = (title, type, words = {}) => ({ brand: b.tsb, type, story: { kind: 'news', title }, words: { headline: title, ...words }, key: title });
-  // news posts come in the pages' own designs (INDIA. TWICE ON THE PODIUM. / POCHETTINO AGREES…)
-  for (const [t, type] of [['PARUL CHAUDHARY BRONZE.', 'medal'], ['DOUBLE PODIUM.', 'medal'], ['15,000 ODI RUNS.', 'milestone'], ['MANCHESTER CITY FOUND GUILTY.', 'breaking']]) assert.equal(pickTemplate(n(t, type)), 'tsb-headline', t);
+  const n = (title, type, words = {}) => ({ brand: b.tsb, type, story: { kind: 'news', title }, words: { headline: title, ...words }, key: title, classic: true });
+  // news posts come in the page's 2026 design (INDIA. TWICE ON THE PODIUM.), the rest in the house post
+  for (const [t, type] of [['PARUL CHAUDHARY BRONZE.', 'medal'], ['DOUBLE PODIUM.', 'medal'], ['15,000 ODI RUNS.', 'milestone'], ['MANCHESTER CITY FOUND GUILTY.', 'breaking']]) assert.equal(pickTemplate({ ...n(t, type), classic: false }), 'tsb-headline', t);
+  assert.equal(pickTemplate({ ...n('“A quote”', 'quote'), classic: false }), 'tsb-binge');
+  assert.match(pickTemplate(n('PARUL CHAUDHARY BRONZE.', 'medal', { accent: 'bronze' })), /^tsb-medal-(top|bottom)$/);
+  assert.equal(pickTemplate(n('DOUBLE PODIUM.', 'medal')), 'tsb-phrase');
+  assert.equal(pickTemplate(n('15,000 ODI RUNS.', 'milestone')), 'tsb-number');
   assert.equal(pickTemplate(n('“For me, it’s the last World Cup”', 'quote')), 'tsb-quote');
   assert.ok(templateOptions(n('INDIA GOLD.', 'medal')).length >= 3, 'the desk offers alternatives');
   for (const k of ['a', 'b', 'c']) assert.equal(pickTemplate({ brand: b.musc, type: 'breaking', story: { kind: 'news', title: 'Isaac Konde joins Manchester United' }, words: { headline: 'A NEW RED.' }, key: k }), 'musc-editorial');

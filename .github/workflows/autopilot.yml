@@ -1,0 +1,13 @@
+# Wakes the autopilot every 5 minutes (GitHub's shortest schedule; runs can start a few
+# minutes late). For one-minute checks, add a cron-job.org job on the same URL.
+name: Autopilot
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: curl -fsS --max-time 70 https://sportsnews-delta.vercel.app/api/cron/studio

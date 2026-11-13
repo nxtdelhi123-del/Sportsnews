@@ -2,24 +2,59 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "functions": {
-    "api/*.js": { "maxDuration": 60 },
-    "api/studio/*.js": { "maxDuration": 60, "includeFiles": "{lib/studio/fonts/**,public/studio/brand/**}" }
+    "api/*.js": {
+      "maxDuration": 60
+    },
+    "api/studio/*.js": {
+      "maxDuration": 60,
+      "includeFiles": "{lib/studio/fonts/**,public/studio/brand/**}"
+    }
   },
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     },
     {
       "source": "/js/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     },
     {
       "source": "/css/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/cron/studio",
+      "destination": "/api/studio/autopilot?route=cron"
+    },
+    {
+      "source": "/api/studio/media",
+      "destination": "/api/studio/autopilot?route=media"
+    },
+    {
+      "source": "/api/telegram",
+      "destination": "/api/studio/autopilot?route=telegram"
     }
   ]
 }
