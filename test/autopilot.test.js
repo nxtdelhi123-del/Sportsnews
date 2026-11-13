@@ -152,13 +152,37 @@ test('autopilot: the media link renders a 1080×1350 JPEG; bad signatures are re
   assert.deepEqual([b.readUInt16BE(i + 7), b.readUInt16BE(i + 5)], [1080, 1350]);
 });
 
-test('autopilot: the cron endpoint needs the secret', async () => {
+test('autopilot: the cron endpoint runs at most once every 45 seconds', async () => {
   const { default: cron } = await import('../lib/studio/routes/cron.js');
-  const res = mockRes();
-  await cron({ query: {}, headers: { authorization: 'Bearer nope' } }, res);
-  assert.equal(res.statusCode, 401);
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  let res = mockRes();
+  await cron({ query: {}, headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, /TELEGRAM_BOT_TOKEN not set/);
+  res = mockRes();
+  await cron({ query: {}, headers: {} }, res);
+  assert.match(res.body, /ran less than 45 s ago/);
   assert.equal(await claim('k', 10), true);
   assert.equal(await claim('k', 10), false);
+});
+
+test('autopilot: only a bot token is needed; the first /start claims the bot', async () => {
+  delete process.env.TELEGRAM_CHAT_ID;
+  delete process.env.AUTOPILOT_SECRET;
+  assert.equal(ap.secret().length, 48, 'secret derived from the bot token');
+  const noOwner = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  assert.match(noOwner.errors.join(' '), /Send \/start/);
+  const hook = calls.find((c) => c.url.endsWith('/setWebhook'));
+  assert.equal(hook.body.url, 'https://site.test/api/telegram');
+  assert.equal(hook.body.secret_token, ap.secret());
+  const { default: webhook } = await import('../lib/studio/routes/telegram.js');
+  const start = (chat) => webhook({ method: 'POST', headers: { 'x-telegram-bot-api-secret-token': ap.secret() }, body: { message: { text: '/start', chat: { id: chat }, from: { first_name: 'N' } } } }, mockRes());
+  await start(555);
+  await start(666);
+  assert.equal(calls.filter((c) => c.url.endsWith('/sendMessage') && /Connected/.test(c.body.text)).map((c) => c.body.chat_id).join(), '555', 'only the first chat is welcomed');
+  const run = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  assert.equal(run.drafted.length, 1);
+  assert.equal(calls.find((c) => c.url.endsWith('/sendPhoto')).body.chat_id, '555');
 });
 
 test('autopilot: the three routes share one function and stay within Vercel Hobby’s 12', async () => {
@@ -169,6 +193,38 @@ test('autopilot: the three routes share one function and stay within Vercel Hobb
   assert.deepEqual(rewrites.map((r) => r.source).sort(), ['/api/cron/studio', '/api/studio/media', '/api/telegram']);
   const { default: one } = await import('../api/studio/autopilot.js');
   const res = mockRes();
-  await one({ query: { route: 'cron' }, headers: {} }, res);
-  assert.equal(res.statusCode, 401);
+  await one({ query: { route: 'nope' }, headers: {} }, res);
+  assert.equal(res.statusCode, 404);
+});
+
+import { upscaleImageUrl, imageSize, findPhotos } from '../lib/studio/photos.js';
+import { clearMemo } from '../lib/http.js';
+import { Resvg } from '@resvg/resvg-js';
+
+const pngOf = (w, hh) => Buffer.from(new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}"><rect width="100%" height="100%" fill="#345"/></svg>`).render().asPng());
+
+test('photos: thumbnails are asked for at full size, and sizes are read from the bytes', () => {
+  assert.equal(upscaleImageUrl('https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/x.jpg'), 'https://ichef.bbci.co.uk/ace/standard/1536/cpsprodpb/x.jpg');
+  assert.match(upscaleImageUrl('https://a.espncdn.com/combiner/i?img=%2Fp.jpg&w=180&h=101'), /w=1600&h=900/);
+  assert.equal(upscaleImageUrl('https://e0.365dm.com/26/11/768x432/x.jpg'), 'https://e0.365dm.com/26/11/1600x900/x.jpg');
+  assert.equal(upscaleImageUrl('https://example.com/a.jpg'), 'https://example.com/a.jpg');
+  assert.deepEqual(imageSize(`data:image/png;base64,${pngOf(1200, 800).toString('base64')}`), { w: 1200, h: 800 });
+});
+
+test('photos: the article’s sharp share picture beats the feed’s thumbnail', async () => {
+  clearMemo();
+  const big = pngOf(1400, 900);
+  const small = pngOf(240, 135);
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u === 'https://news.example/story') return new Response('<html><head><meta property="og:image" content="https://img.example/big.png"></head></html>', { headers: { 'content-type': 'text/html' } });
+    if (u === 'https://img.example/big.png') return new Response(big, { headers: { 'content-type': 'image/png' } });
+    if (u === 'https://img.example/thumb.png') return new Response(small, { headers: { 'content-type': 'image/png' } });
+    return new Response('nope', { status: 404 });
+  };
+  const got = await findPhotos({ kind: 'news', title: 'x', link: 'https://news.example/story', image: 'https://img.example/thumb.png', source: 'Example' });
+  assert.equal(imageSize(got.hero).w, 1400);
+  clearMemo();
+  const fallback = await findPhotos({ kind: 'news', title: 'x', link: 'https://news.example/missing', image: 'https://img.example/thumb.png', source: 'Example' });
+  assert.equal(imageSize(fallback.hero).w, 240, 'a soft picture is still better than none');
 });
