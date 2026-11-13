@@ -166,9 +166,10 @@ test('brain: Gemini’s free tier works without a Claude key', async () => {
     assert.equal(sent.headers['x-goog-api-key'], 'g', 'the key goes in a header, not the URL');
     assert.match(sent.body.systemInstruction.parts[0].text, /news editor of The Sports Binge/);
     assert.deepEqual(got.map((c) => [c.key, c.priority, c.why, c.by]), [['news:g', 'P1', 'Indian gold', 'gemini']]);
-    globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: 'quota exceeded' } }), { status: 429 });
-    const fallback = await judge(BRANDS.tsb, [cand(story, 4)], { log: { error() {} } });
-    assert.deepEqual(fallback.map((c) => c.by), ['rules'], 'out of free quota: the rules take over');
+    globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: 'This model is currently experiencing high demand.' } }), { status: 503 });
+    const fallback = await judge(BRANDS.tsb, [cand(story, 4), cand({ ...story, id: 'big' }, 9)], { log: { error() {} } });
+    assert.equal(fallback.failed, true);
+    assert.deepEqual(fallback.map((c) => [c.key, c.by]), [['news:big', 'rules']], 'every model busy: only the very biggest story goes out on the rules');
   } finally {
     globalThis.fetch = real;
     delete process.env.GEMINI_API_KEY;
@@ -191,7 +192,7 @@ test('brain: a Gemini model Google has retired is skipped for the next one', asy
     resetGeminiModel();
     const got = await judge(BRANDS.tsb, [cand(story, 4)]);
     assert.deepEqual(got.map((c) => c.by), ['gemini']);
-    assert.deepEqual(tried, ['gemini-3.5-flash', 'gemini-3.1-flash-lite']);
+    assert.deepEqual(tried.slice(0, 2), ['gemini-3.5-flash', 'gemini-3.1-flash-lite']);
     tried.length = 0;
     await judge(BRANDS.tsb, [cand(story, 4)]);
     assert.deepEqual(tried, ['gemini-3.1-flash-lite'], 'the working model is remembered');
@@ -201,12 +202,34 @@ test('brain: a Gemini model Google has retired is skipped for the next one', asy
   }
 });
 
+test('brain: when the brain is unreachable, the stories it could not read wait for the next run', async () => {
+  process.env.GEMINI_API_KEY = 'g';
+  try {
+    const list = [cand(story, 4)];
+    let calls = 0;
+    const down = async () => {
+      calls++;
+      return Object.assign([], { failed: true });
+    };
+    const up = async (brand, cands) => cands.map((c) => ({ ...c, priority: 'P2', why: 'back', by: 'gemini' }));
+    const run = (getVerdicts) => ap.runAutopilot({ now: NOW, getCandidates: async () => list, getPack: async () => packFor(story), getVerdicts });
+    const first = await run(down);
+    assert.equal(first.drafted.length, 0);
+    assert.match(first.errors.join(), /editor brain unavailable, 1 stories wait/);
+    const second = await run(up);
+    assert.deepEqual(second.drafted.map((d) => d.why), ['back'], 'the story was not marked as seen');
+  } finally {
+    delete process.env.GEMINI_API_KEY;
+  }
+});
+
 test('brain: if Claude fails, the rules still decide', async () => {
   process.env.ANTHROPIC_API_KEY = 'k';
   try {
     const { judge } = await import('../lib/studio/editor.js');
-    const got = await judge(BRANDS.tsb, [cand(story, 4), cand({ ...story, id: 'z' }, 2)], { log: { error() {} } });
+    const got = await judge(BRANDS.tsb, [cand(story, 9), cand({ ...story, id: 'z' }, 4)], { log: { error() {} } });
     assert.deepEqual(got.map((c) => [c.key, c.by]), [['news:lawson', 'rules']]);
+    assert.equal(got.failed, true);
   } finally {
     delete process.env.ANTHROPIC_API_KEY;
   }
@@ -333,4 +356,10 @@ test('photos: the article’s sharp share picture beats the feed’s thumbnail',
   clearMemo();
   const fallback = await findPhotos({ kind: 'news', title: 'x', link: 'https://news.example/missing', image: 'https://img.example/thumb.png', source: 'Example' });
   assert.equal(imageSize(fallback.hero).w, 240, 'a soft picture is still better than none');
+});
+
+test('rules: a live scorecard posing as a headline is never a post', () => {
+  const never = BRANDS.tsb.interests.never;
+  assert.ok(never.some((re) => re.test('India: 13/4(7.0) | IND vs NZ 4th ODI Match')));
+  assert.ok(!never.some((re) => re.test('India beat New Zealand by 7 wickets to win the series 3-1')));
 });
