@@ -925,16 +925,12 @@ test('studio: type fills its measure and breaks lines like an editor', () => {
 test('studio: every kind has its own layout, with alternatives on the desk', async () => {
   const b = { tsb: BRANDS.tsb, musc: BRANDS.musc };
   const n = (title, type, words = {}) => ({ brand: b.tsb, type, story: { kind: 'news', title }, words: { headline: title, ...words }, key: title });
-  assert.match(pickTemplate(n('PARUL CHAUDHARY BRONZE.', 'medal', { accent: 'bronze' })), /^tsb-medal-(top|bottom)$/);
-  assert.equal(pickTemplate(n('DOUBLE PODIUM.', 'medal')), 'tsb-phrase');
-  assert.equal(pickTemplate(n('15,000 ODI RUNS.', 'milestone')), 'tsb-number');
+  // news posts come in the pages' own designs (INDIA. TWICE ON THE PODIUM. / POCHETTINO AGREES…)
+  for (const [t, type] of [['PARUL CHAUDHARY BRONZE.', 'medal'], ['DOUBLE PODIUM.', 'medal'], ['15,000 ODI RUNS.', 'milestone'], ['MANCHESTER CITY FOUND GUILTY.', 'breaking']]) assert.equal(pickTemplate(n(t, type)), 'tsb-headline', t);
   assert.equal(pickTemplate(n('“For me, it’s the last World Cup”', 'quote')), 'tsb-quote');
-  assert.equal(pickTemplate(n('MANCHESTER CITY FOUND GUILTY.', 'breaking')), 'tsb-verdict');
   assert.ok(templateOptions(n('INDIA GOLD.', 'medal')).length >= 3, 'the desk offers alternatives');
-  const signing = { brand: b.musc, type: 'breaking', story: { kind: 'news', title: 'Isaac Konde joins Manchester United' }, words: { headline: 'A new Red.' }, key: 'k' };
-  assert.equal(pickTemplate(signing), 'musc-signing');
-  const variety = new Set(['a', 'b', 'c', 'd', 'e', 'f'].map((k) => pickTemplate({ brand: b.musc, type: 'breaking', story: { kind: 'news', title: 'x' }, words: { headline: 'X' }, key: k })));
-  assert.ok(variety.size >= 2, 'neighbouring MUSC news posts do not all share one layout');
+  for (const k of ['a', 'b', 'c']) assert.equal(pickTemplate({ brand: b.musc, type: 'breaking', story: { kind: 'news', title: 'Isaac Konde joins Manchester United' }, words: { headline: 'A NEW RED.' }, key: k }), 'musc-editorial');
+  assert.ok(templateOptions({ brand: b.musc, type: 'breaking', story: { kind: 'news', title: 'x' }, words: { headline: 'X' }, key: 'k' }).includes('musc-signing'), 'the older MUSC layouts stay on the desk');
   // every template draws at the page's 3:4 size
   const esp = { kind: 'match', sport: 'soccer', league: { path: 'x', name: 'UEFA Nations League' }, home: { name: 'England', abbr: 'ENG', score: '2' }, away: { name: 'Spain', abbr: 'ESP', score: '3', winner: true }, status: { state: 'post' }, events: [] };
   const news = { kind: 'news', id: 'k', title: 'Kohli fastest to 15,000 ODI runs', summary: 'In 303 innings.', sport: 'cricket', source: 'x' };
@@ -1181,4 +1177,23 @@ test('United desk: every competition, the live minute, the table, the squad and 
   assert.equal(d.table.rows.find((r) => r.id === '360').rank, 18);
   assert.deepEqual(d.squad.map((g) => g.position), ['Goalkeeper', 'Midfielder']);
   assert.deepEqual(d.news.map((n) => n.title), ['Carrick sacked by Manchester United'], 'West Ham United and Man City are not United news');
+});
+
+test('studio: the 2026 headline post adapts to the story, the MUSC editorial lays out the page news post', async () => {
+  const tsb = { ...BRANDS.tsb };
+  const draw = async (pack, template) => (await renderPack({ assets: {}, when: {}, ...pack }, { template, width: 270 })).png.length;
+  const duo = { brand: tsb, type: 'medal', story: { kind: 'news', title: 'Yashvir Singh silver, Rohit Yadav bronze', sport: 'athletics' }, words: { headline: 'INDIA. TWICE ON THE PODIUM.', accent: 'gold', podium: [{ name: 'Yashvir Singh', metal: 'silver', value: '85.72m' }, { name: 'Rohit Yadav', metal: 'bronze', value: '84.35m' }] } };
+  const single = { brand: tsb, type: 'medal', story: { kind: 'news', title: 'India bronze in relay', sport: 'athletics' }, words: { headline: 'INDIA BRONZE.', name: 'MIXED 4×100M RELAY', stats: [{ value: '41.06s', label: 'Season best' }] } };
+  const news = { brand: tsb, type: 'breaking', story: { kind: 'news', title: 'Rain washes out quarter-finals', sport: 'cricket' }, words: { headline: 'KNOCKED OUT WITHOUT PLAYING.', name: 'ALL 4 QUARTER-FINALS — ABANDONED', kicker: 'Nepal & Malaysia exit as rain washes out every quarter-final.' } };
+  for (const p of [duo, single, news]) assert.ok((await draw(p, 'tsb-headline')) > 5000);
+  const ed = { brand: { ...BRANDS.musc }, type: 'breaking', story: { kind: 'news', title: 'Pochettino agrees deal', summary: 'United and Pochettino have agreed a deal. A formal announcement is expected on Friday.', source: 'Sky Sports', sport: 'soccer' }, words: { headline: 'POCHETTINO AGREES 2½-YEAR DEAL.', eyebrow: 'DEAL AGREED', accentWords: ['deal'] } };
+  assert.ok((await draw(ed, 'musc-editorial')) > 5000);
+  // the photo picker reads picture sizes to keep the sharper one
+  const { imageWidth } = await import('../lib/studio/photos.js');
+  const png = (await renderPack({ ...ed, assets: {} }, { template: 'musc-editorial', width: 300 })).png;
+  assert.equal(imageWidth(`data:image/png;base64,${Buffer.from(png).toString('base64')}`), 300);
+  // feeds' thumbnails are asked for at full size
+  const { upsize } = await import('../lib/rss.js');
+  assert.equal(upsize('https://e0.365dm.com/26/11/768x432/skysports-pochettino_1.jpg'), 'https://e0.365dm.com/26/11/1600x900/skysports-pochettino_1.jpg');
+  assert.equal(upsize('https://lh3.googleusercontent.com/abc=s0-w300-rw'), 'https://lh3.googleusercontent.com/abc=s0-w1600-rw');
 });
