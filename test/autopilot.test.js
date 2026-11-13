@@ -363,3 +363,18 @@ test('rules: a live scorecard posing as a headline is never a post', () => {
   assert.ok(never.some((re) => re.test('India: 13/4(7.0) | IND vs NZ 4th ODI Match')));
   assert.ok(!never.some((re) => re.test('India beat New Zealand by 7 wickets to win the series 3-1')));
 });
+
+test('autopilot: a story chosen after the daily cap is reached is kept for later, not lost', async () => {
+  process.env.AUTOPILOT_DAILY_CAP = '0';
+  try {
+    const run = () => ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+    const first = await run();
+    assert.equal(first.drafted.length, 0);
+    assert.match(first.errors.join(), /daily cap of 0/);
+    process.env.AUTOPILOT_DAILY_CAP = '20';
+    const second = await run();
+    assert.equal(second.drafted.length, 1);
+  } finally {
+    delete process.env.AUTOPILOT_DAILY_CAP;
+  }
+});
