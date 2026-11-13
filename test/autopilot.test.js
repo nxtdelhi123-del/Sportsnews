@@ -98,12 +98,91 @@ test('autopilot: a new big story goes to Telegram once, with Post and Skip', asy
   assert.equal(second.drafted.length, 0, 'the same story is never sent twice');
 });
 
-test('autopilot: without Instagram set up, the draft says so and has no Post button', async () => {
+test('autopilot: without Instagram set up, the draft says so and offers “I posted it”', async () => {
   delete process.env.IG_TSB_TOKEN;
   await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
   const { caption, reply_markup: kb } = calls.find((c) => c.url.includes('/sendPhoto')).body;
   assert.match(caption, /Instagram isn’t connected yet/);
-  assert.deepEqual(kb.inline_keyboard[0].map((b) => b.text), ['✖ Skip']);
+  assert.deepEqual(kb.inline_keyboard[0].map((b) => b.text), ['👍 I posted it', '✖ Skip']);
+});
+
+test('brain: picks, ranks and explains; turned-down stories are not asked about again', async () => {
+  process.env.ANTHROPIC_API_KEY = 'k';
+  try {
+    const a = { ...story, id: 'a', title: 'Neeraj Chopra wins gold at the World Championships' };
+    const b = { ...story, id: 'b', title: 'Club announces new kit sponsor' };
+    const list = [cand(story, 2.5), cand(a, 6, 'medal'), cand(b, 2.2)];
+    let asked = [];
+    const getVerdicts = async (brand, cands) => {
+      asked.push(cands.map((c) => c.key));
+      return cands.filter((c) => c.key !== 'news:b').map((c) => ({ ...c, priority: c.key === 'news:a' ? 'P1' : 'P2', why: c.key === 'news:a' ? 'Indian gold at a world event' : 'F1 seat news', by: 'claude' })).reverse();
+    };
+    const run = () => ap.runAutopilot({ now: NOW, getCandidates: async () => list, getPack: async (_, key) => packFor(list.find((c) => c.key === key).story), getVerdicts });
+    const out = await run();
+    assert.deepEqual(asked[0].sort(), ['news:a', 'news:b', 'news:lawson'], 'the lower bar lets 2+ stories reach the brain');
+    assert.deepEqual(out.drafted.map((d) => d.priority), ['P1', 'P2']);
+    assert.equal(out.rejected, 1);
+    const cap = calls.filter((c) => c.url.includes('/sendPhoto'))[0].body.caption;
+    assert.match(cap, /^🆕 P1 · Reported · breaking\n🧠 Indian gold at a world event\n/);
+    await run();
+    assert.equal(asked.length, 1, 'nothing new: the brain is not called again');
+  } finally {
+    delete process.env.ANTHROPIC_API_KEY;
+  }
+});
+
+test('brain: Post, Skip and “I posted it” taps become its memory of the editor’s taste', async () => {
+  delete process.env.IG_TSB_TOKEN;
+  const { readTaste, systemPrompt, tasteBlocks } = await import('../lib/studio/editor.js');
+  const mk = (id, title) => ({ ...story, id, title });
+  const out = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(mk('x', 'Lawson stays at Racing Bulls')), cand(mk('y', 'Hamilton fastest in Brazil'))], getPack: async (_, key) => packFor(mk(key.slice(5), key)) });
+  await ap.markPosted(out.drafted[0].id);
+  await ap.skipDraft(out.drafted[1].id);
+  await ap.skipDraft(out.drafted[1].id);
+  const taste = await readTaste('tsb');
+  assert.deepEqual(taste.map((t) => t.d), ['skip', 'post'], 'newest first, a second Skip is not counted twice');
+  const sys = systemPrompt(BRANDS.tsb, taste);
+  assert.match(sys, /recently chose to post[^]*news:x[^]*recently skipped[^]*news:y/);
+  const skips = Array.from({ length: 3 }, () => ({ d: 'skip', sport: 'tennis', type: 'breaking' }));
+  assert.equal(tasteBlocks(skips, { story: { sport: 'tennis' }, type: 'breaking' }), true);
+  assert.equal(tasteBlocks([...skips, { d: 'post', sport: 'tennis', type: 'breaking' }], { story: { sport: 'tennis' }, type: 'breaking' }), false);
+});
+
+test('brain: Gemini’s free tier works without a Claude key', async () => {
+  process.env.GEMINI_API_KEY = 'g';
+  const real = globalThis.fetch;
+  let sent;
+  globalThis.fetch = async (url, init) => {
+    sent = { url: String(url), headers: init.headers, body: JSON.parse(init.body) };
+    const verdicts = [{ n: 0, post: false, priority: 'P3', why: 'routine' }, { n: 1, post: true, priority: 'P1', why: 'Indian gold' }];
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ verdicts }) }] } }] }), { headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const { judge, brainKind } = await import('../lib/studio/editor.js');
+    assert.equal(brainKind(), 'gemini');
+    const got = await judge(BRANDS.tsb, [cand(story, 4), cand({ ...story, id: 'g', title: 'Neeraj Chopra gold' }, 3, 'medal')]);
+    assert.match(sent.url, /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash:generateContent$/);
+    assert.equal(sent.headers['x-goog-api-key'], 'g', 'the key goes in a header, not the URL');
+    assert.match(sent.body.systemInstruction.parts[0].text, /news editor of The Sports Binge/);
+    assert.deepEqual(got.map((c) => [c.key, c.priority, c.why, c.by]), [['news:g', 'P1', 'Indian gold', 'gemini']]);
+    globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: 'quota exceeded' } }), { status: 429 });
+    const fallback = await judge(BRANDS.tsb, [cand(story, 4)], { log: { error() {} } });
+    assert.deepEqual(fallback.map((c) => c.by), ['rules'], 'out of free quota: the rules take over');
+  } finally {
+    globalThis.fetch = real;
+    delete process.env.GEMINI_API_KEY;
+  }
+});
+
+test('brain: if Claude fails, the rules still decide', async () => {
+  process.env.ANTHROPIC_API_KEY = 'k';
+  try {
+    const { judge } = await import('../lib/studio/editor.js');
+    const got = await judge(BRANDS.tsb, [cand(story, 4), cand({ ...story, id: 'z' }, 2)], { log: { error() {} } });
+    assert.deepEqual(got.map((c) => [c.key, c.by]), [['news:lawson', 'rules']]);
+  } finally {
+    delete process.env.ANTHROPIC_API_KEY;
+  }
 });
 
 test('autopilot: tapping Post publishes once; Skip blocks it', async () => {

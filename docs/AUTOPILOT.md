@@ -37,6 +37,18 @@ headlines.
 The poster is 1080×1350 JPEG. Instagram's API rejects the 3:4 grid-tile size, so the
 autopilot always posts 4:5.
 
+## The editor's brain
+
+`lib/studio/editor.js` decides which stories are worth a post. The rules in `score.js` are a
+first pass. When an AI key is set, the bar drops to a score of 2 and the AI reads up to 15
+fresh stories per run like the page's editor would: Claude with `ANTHROPIC_API_KEY`, or
+Google's Gemini with `GEMINI_API_KEY` (free tier, `gemini-2.5-flash`; set `GEMINI_MODEL` to change). It is given the page's guide
+(`editor` in `lib/studio/brands/tsb.js`) and the editor's last Post / Skip / "I posted it" taps
+(kept in the store as `ap:taste:<brand>`), and returns post or not, P1/P2/P3 and a one-line
+reason, which the draft shows as 🧠. Stories it turns down are not asked about again. If
+the AI is unavailable or out of free quota the rules decide, and a sport and post type the editor has skipped three
+times without ever posting is held back.
+
 ## One-time setup (about 10 minutes)
 
 1. **Store:** Vercel → Project → Storage → Create → **Upstash for Redis** (free), connected to this
@@ -53,7 +65,7 @@ minutes late). For one-minute checks, add a free cron-job.org job on
 `https://sportsnews-delta.vercel.app/api/cron/studio` (no key needed: a pass only ever messages the
 owner, never repeats a story, and runs at most every 45 s). `/check` in the chat runs a pass at once.
 
-Optional: `ANTHROPIC_API_KEY` (Claude writes the words; formulas otherwise).
+Optional: `GEMINI_API_KEY` (free: Gemini picks the stories) or `ANTHROPIC_API_KEY` (paid: Claude picks the stories and writes the words). Rules and formulas otherwise.
 
 ### Instagram (later, about 30 minutes)
 Follow §6 of `docs/STUDIO_PLAN.md`: Business/Creator account linked to a Facebook Page → Meta app →
