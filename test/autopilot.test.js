@@ -148,6 +148,32 @@ test('brain: Post, Skip and “I posted it” taps become its memory of the edit
   assert.equal(tasteBlocks([...skips, { d: 'post', sport: 'tennis', type: 'breaking' }], { story: { sport: 'tennis' }, type: 'breaking' }), false);
 });
 
+test('brain: Gemini’s free tier works without a Claude key', async () => {
+  process.env.GEMINI_API_KEY = 'g';
+  const real = globalThis.fetch;
+  let sent;
+  globalThis.fetch = async (url, init) => {
+    sent = { url: String(url), headers: init.headers, body: JSON.parse(init.body) };
+    const verdicts = [{ n: 0, post: false, priority: 'P3', why: 'routine' }, { n: 1, post: true, priority: 'P1', why: 'Indian gold' }];
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ verdicts }) }] } }] }), { headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const { judge, brainKind } = await import('../lib/studio/editor.js');
+    assert.equal(brainKind(), 'gemini');
+    const got = await judge(BRANDS.tsb, [cand(story, 4), cand({ ...story, id: 'g', title: 'Neeraj Chopra gold' }, 3, 'medal')]);
+    assert.match(sent.url, /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash:generateContent$/);
+    assert.equal(sent.headers['x-goog-api-key'], 'g', 'the key goes in a header, not the URL');
+    assert.match(sent.body.systemInstruction.parts[0].text, /news editor of The Sports Binge/);
+    assert.deepEqual(got.map((c) => [c.key, c.priority, c.why, c.by]), [['news:g', 'P1', 'Indian gold', 'gemini']]);
+    globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: 'quota exceeded' } }), { status: 429 });
+    const fallback = await judge(BRANDS.tsb, [cand(story, 4)], { log: { error() {} } });
+    assert.deepEqual(fallback.map((c) => c.by), ['rules'], 'out of free quota: the rules take over');
+  } finally {
+    globalThis.fetch = real;
+    delete process.env.GEMINI_API_KEY;
+  }
+});
+
 test('brain: if Claude fails, the rules still decide', async () => {
   process.env.ANTHROPIC_API_KEY = 'k';
   try {
