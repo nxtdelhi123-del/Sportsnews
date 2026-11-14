@@ -609,7 +609,7 @@ test('studio: every template renders a PNG', async () => {
   assert.equal(story.height, 1920);
   assert.equal(pickTemplate({ brand: BRANDS.tsb, type: 'result', story: esp }), 'tsb-binge', 'the house post is the TSB default');
   assert.equal(pickTemplate({ brand: BRANDS.tsb, type: 'result', story: esp, classic: true }), 'tsb-cream');
-  assert.equal(pickTemplate({ brand: BRANDS.musc, type: 'preview', story: esp }), 'musc-matchday');
+  assert.equal(pickTemplate({ brand: BRANDS.musc, type: 'preview', story: esp }), 'musc-matchday-poster');
   assert.ok(Object.keys(TEMPLATES).length >= 4);
 });
 
@@ -1202,4 +1202,22 @@ test('studio: the 2026 headline post adapts to the story, the MUSC editorial lay
   const { upsize } = await import('../lib/rss.js');
   assert.equal(upsize('https://e0.365dm.com/26/11/768x432/skysports-pochettino_1.jpg'), 'https://e0.365dm.com/26/11/1600x900/skysports-pochettino_1.jpg');
   assert.equal(upsize('https://lh3.googleusercontent.com/abc=s0-w300-rw'), 'https://lh3.googleusercontent.com/abc=s0-w1600-rw');
+});
+
+test('studio: MUSC match posts — MATCHDAY, FULL TIME and CONFIRMED XI in formation', async () => {
+  const { xiRows } = await import('../lib/studio/musc-match.js');
+  const xi = { team: 'Manchester United', formation: '4-2-3-1', players: [
+    ['Senne Lammens', 1, 'G', 1], ['Harry Maguire', 5, 'CD-L', 6], ['Leny Yoro', 15, 'CD-R', 5], ['Diogo Dalot', 2, 'LB', 3], ['Noussair Mazraoui', 3, 'RB', 2], ['Bruno Fernandes', 8, 'AM', 10],
+    ['Kobbie Mainoo', 37, 'LM', 4], ['Youri Tielemans', 18, 'RM', 8], ['Bryan Mbeumo', 19, 'F', 9], ['Matheus Cunha', 10, 'AM-L', 11], ['Amad Diallo', 16, 'AM-R', 7],
+  ].map(([name, number, pos, place]) => ({ name, number: String(number), pos, place })) };
+  const rows = xiRows(xi).map((r) => r.map((p) => p.name.split(' ').pop()));
+  assert.deepEqual(rows, [['Lammens'], ['Dalot', 'Maguire', 'Yoro', 'Mazraoui'], ['Mainoo', 'Tielemans'], ['Cunha', 'Fernandes', 'Diallo'], ['Mbeumo']]);
+  const story = { kind: 'match', sport: 'soccer', id: '1', date: '2026-11-22T16:30Z', league: { path: 'soccer/eng.1', name: 'Premier League' }, home: { name: 'Manchester United', abbr: 'MUN', score: '4' }, away: { name: 'Aston Villa', abbr: 'AVL', score: '4' }, venue: { name: 'Old Trafford' }, events: [{ type: 'Goal', player: 'Bruno Fernandes', minute: "42'", team: 'MUN' }] };
+  const brand = BRANDS.musc;
+  assert.equal(pickTemplate({ brand, type: 'preview', story: { ...story, status: { state: 'pre' }, details: { xi: [xi] } } }), 'musc-xi', 'line-ups out: CONFIRMED XI');
+  assert.equal(pickTemplate({ brand, type: 'result', story: { ...story, status: { state: 'post' } } }), 'musc-fulltime');
+  for (const [template, state] of [['musc-matchday-poster', 'pre'], ['musc-fulltime', 'post'], ['musc-xi', 'pre']]) {
+    const { png } = await renderPack({ brand, type: 'result', words: {}, story: { ...story, status: { state }, details: { xi: [xi] } }, when: { day: 'SUN, 22 NOV', time: '10:00 PM IST' }, assets: {} }, { template, width: 270 });
+    assert.ok(png.length > 5000, template);
+  }
 });
