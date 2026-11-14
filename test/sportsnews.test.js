@@ -1242,3 +1242,19 @@ test('news: a story keeps its own sport when a search feed was for another', asy
   const items = mergeNews([{ feed: { name: 'Google News', url: 'https://news.google.com/rss/search?q=badminton', sport: 'badminton' }, items: [{ title: "India's Sooryavanshi becomes youngest captain in men's T20 cricket history - NST", link: 'https://x', published: new Date(now).toISOString(), summary: '' }] }], now);
   assert.equal(items[0].sport, 'cricket');
 });
+
+test('photos: ESPN agency photos only when the caption shows the person, in the story mood, never the opponent', async () => {
+  clearMemo();
+  const { espnPhotos, toneOf } = await import('../lib/studio/photos.js');
+  const img = (name, caption, url, peers = []) => ({ name: `${name} [608x342]`, caption, url, width: 608, height: 342, peers });
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ results: [{ type: 'article', contents: [
+      { displayName: 'Two women, one plan', images: [img('Garret Tan', 'Garret Tan celebrates the victory against Lakshya Sen', 'https://a/1.jpg', [{ name: 'Garret Tan [1296x1296]', url: 'https://a/1b.jpg', width: 1296, height: 1296 }])] },
+      { displayName: 'Lakshya loses', images: [img('Lakshya Sen sad', 'Lakshya Sen sad after the loss', 'https://a/2.jpg', [{ name: 'Lakshya Sen sad [1296x1296]', url: 'https://a/2b.jpg', width: 1296, height: 1296 }, { name: 'Some other photo [1296x1296]', url: 'https://a/x.jpg', width: 1296, height: 1296 }])] },
+      { displayName: 'Lakshya wins', images: [img('Lakshya Sen medal', 'Lakshya Sen celebrates with his medal', 'https://a/3.jpg', [{ name: 'Lakshya Sen medal [1296x1296]', url: 'https://a/3b.jpg', width: 1296, height: 1296 }])] },
+    ] }] }));
+  const story = { title: 'Lakshya Sen reaches the final' };
+  assert.equal(toneOf(story), 1);
+  const list = await espnPhotos('Lakshya Sen', { who: 'Lakshya Sen', tone: toneOf(story) });
+  assert.deepEqual(list.map((x) => x.url), ['https://a/3b.jpg', 'https://a/2b.jpg'], 'the opponent shot and the unrelated "peer" are left out; the happy photo first');
+});
