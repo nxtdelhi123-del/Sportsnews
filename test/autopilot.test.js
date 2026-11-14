@@ -52,6 +52,9 @@ function mockNet() {
   };
 }
 
+// stories in these tests have a photo unless a test says otherwise (no network here)
+const hasPhoto = async () => ({ ok: true, credit: 'test' });
+
 beforeEach(() => {
   resetMemoryStore();
   pollPolicy.delay = 0;
@@ -82,7 +85,7 @@ test('autopilot: a new big story goes to Telegram once, with Post and Skip', asy
   const old = { ...story, id: 'old', title: 'Something from yesterday', published: new Date(NOW - 20 * 3600e3).toISOString() };
   const small = { ...story, id: 'small', title: 'Minor news' };
   const list = [cand(story), cand(old), cand(small, 1)];
-  const run = () => ap.runAutopilot({ now: NOW, getCandidates: async () => list, getPack: async (b, key) => packFor(list.find((c) => c.key === key).story) });
+  const run = () => ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => list, getPack: async (b, key) => packFor(list.find((c) => c.key === key).story) });
   const first = await run();
   assert.deepEqual(first.errors, []);
   assert.equal(first.drafted.length, 1, 'only the fresh story above the bar');
@@ -100,7 +103,7 @@ test('autopilot: a new big story goes to Telegram once, with Post and Skip', asy
 
 test('autopilot: without Instagram set up, the draft says so and offers “I posted it”', async () => {
   delete process.env.IG_TSB_TOKEN;
-  await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  await ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
   const { caption, reply_markup: kb } = calls.find((c) => c.url.includes('/sendPhoto')).body;
   assert.match(caption, /Instagram isn’t connected yet/);
   assert.deepEqual(kb.inline_keyboard[0].map((b) => b.text), ['👍 I posted it', '✖ Skip']);
@@ -117,7 +120,7 @@ test('brain: picks, ranks and explains; turned-down stories are not asked about 
       asked.push(cands.map((c) => c.key));
       return cands.filter((c) => c.key !== 'news:b').map((c) => ({ ...c, priority: c.key === 'news:a' ? 'P1' : 'P2', why: c.key === 'news:a' ? 'Indian gold at a world event' : 'F1 seat news', by: 'claude' })).reverse();
     };
-    const run = () => ap.runAutopilot({ now: NOW, getCandidates: async () => list, getPack: async (_, key) => packFor(list.find((c) => c.key === key).story), getVerdicts });
+    const run = () => ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => list, getPack: async (_, key) => packFor(list.find((c) => c.key === key).story), getVerdicts });
     const out = await run();
     assert.deepEqual(asked[0].sort(), ['news:a', 'news:b', 'news:lawson'], 'the lower bar lets 2+ stories reach the brain');
     assert.deepEqual(out.drafted.map((d) => d.priority), ['P1', 'P2']);
@@ -135,7 +138,7 @@ test('brain: Post, Skip and “I posted it” taps become its memory of the edit
   delete process.env.IG_TSB_TOKEN;
   const { readTaste, systemPrompt, tasteBlocks } = await import('../lib/studio/editor.js');
   const mk = (id, title) => ({ ...story, id, title });
-  const out = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(mk('x', 'Lawson stays at Racing Bulls')), cand(mk('y', 'Hamilton fastest in Brazil'))], getPack: async (_, key) => packFor(mk(key.slice(5), key)) });
+  const out = await ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => [cand(mk('x', 'Lawson stays at Racing Bulls')), cand(mk('y', 'Hamilton fastest in Brazil'))], getPack: async (_, key) => packFor(mk(key.slice(5), key)) });
   await ap.markPosted(out.drafted[0].id);
   await ap.skipDraft(out.drafted[1].id);
   await ap.skipDraft(out.drafted[1].id);
@@ -212,7 +215,7 @@ test('brain: when the brain is unreachable, the stories it could not read wait f
       return Object.assign([], { failed: true });
     };
     const up = async (brand, cands) => cands.map((c) => ({ ...c, priority: 'P2', why: 'back', by: 'gemini' }));
-    const run = (getVerdicts) => ap.runAutopilot({ now: NOW, getCandidates: async () => list, getPack: async () => packFor(story), getVerdicts });
+    const run = (getVerdicts) => ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => list, getPack: async () => packFor(story), getVerdicts });
     const first = await run(down);
     assert.equal(first.drafted.length, 0);
     assert.match(first.errors.join(), /editor brain unavailable, 1 stories wait/);
@@ -236,7 +239,7 @@ test('brain: if Claude fails, the rules still decide', async () => {
 });
 
 test('autopilot: tapping Post publishes once; Skip blocks it', async () => {
-  const { drafted } = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  const { drafted } = await ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
   const id = drafted[0].id;
   const { default: webhook } = await import('../lib/studio/routes/telegram.js');
   const tap = (data, chat = 42, secret = 's3cret') => {
@@ -256,14 +259,14 @@ test('autopilot: tapping Post publishes once; Skip blocks it', async () => {
   assert.equal(calls.filter((c) => c.url.includes('/media_publish')).length, 1, 'a second tap does not post twice');
   assert.equal((await getJSON(`ap:draft:${id}`)).state, 'published');
 
-  const two = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand({ ...story, id: 'b', title: 'Andreeva beats Sabalenka 6-4, 6-0 to reach WTA Finals semis', sport: 'tennis' })], getPack: async () => packFor({ ...story, id: 'b', title: 'Andreeva beats Sabalenka', sport: 'tennis' }) });
+  const two = await ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => [cand({ ...story, id: 'b', title: 'Andreeva beats Sabalenka 6-4, 6-0 to reach WTA Finals semis', sport: 'tennis' })], getPack: async () => packFor({ ...story, id: 'b', title: 'Andreeva beats Sabalenka', sport: 'tennis' }) });
   const id2 = two.drafted[0].id;
   await tap(`skip:${id2}`);
   assert.equal((await ap.publishDraft(id2)).ok, false);
 });
 
 test('autopilot: the media link renders a 1080×1350 JPEG; bad signatures are refused', async () => {
-  const { drafted } = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  const { drafted } = await ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
   const id = drafted[0].id;
   const { default: media } = await import('../lib/studio/routes/media.js');
   let res = mockRes();
@@ -299,7 +302,7 @@ test('autopilot: only a bot token is needed; the first /start claims the bot', a
   delete process.env.TELEGRAM_CHAT_ID;
   delete process.env.AUTOPILOT_SECRET;
   assert.equal(ap.secret().length, 48, 'secret derived from the bot token');
-  const noOwner = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  const noOwner = await ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
   assert.match(noOwner.errors.join(' '), /Send \/start/);
   const hook = calls.find((c) => c.url.endsWith('/setWebhook'));
   assert.equal(hook.body.url, 'https://site.test/api/telegram');
@@ -309,7 +312,7 @@ test('autopilot: only a bot token is needed; the first /start claims the bot', a
   await start(555);
   await start(666);
   assert.equal(calls.filter((c) => c.url.endsWith('/sendMessage') && /Connected/.test(c.body.text)).map((c) => c.body.chat_id).join(), '555', 'only the first chat is welcomed');
-  const run = await ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  const run = await ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
   assert.equal(run.drafted.length, 1);
   assert.equal(calls.find((c) => c.url.endsWith('/sendPhoto')).body.chat_id, '555');
 });
@@ -367,7 +370,7 @@ test('rules: a live scorecard posing as a headline is never a post', () => {
 test('autopilot: a story chosen after the daily cap is reached is kept for later, not lost', async () => {
   process.env.AUTOPILOT_DAILY_CAP = '0';
   try {
-    const run = () => ap.runAutopilot({ now: NOW, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+    const run = () => ap.runAutopilot({ now: NOW, checkPhoto: hasPhoto, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
     const first = await run();
     assert.equal(first.drafted.length, 0);
     assert.match(first.errors.join(), /daily cap of 0/);
@@ -377,4 +380,14 @@ test('autopilot: a story chosen after the daily cap is reached is kept for later
   } finally {
     delete process.env.AUTOPILOT_DAILY_CAP;
   }
+});
+
+test('autopilot: a story without a sharp photo is never sent; it waits for a later run', async () => {
+  const run = (checkPhoto) => ap.runAutopilot({ now: NOW, checkPhoto, getCandidates: async () => [cand(story)], getPack: async () => packFor(story) });
+  const first = await run(async () => ({ ok: false }));
+  assert.equal(first.drafted.length, 0);
+  assert.equal(first.waiting.length, 1);
+  assert.equal(calls.filter((c) => c.url.includes('/sendPhoto')).length, 0, 'nothing reaches the phone without a photo');
+  const later = await run(hasPhoto);
+  assert.equal(later.drafted.length, 1, 'once a photo turns up the story goes out');
 });
