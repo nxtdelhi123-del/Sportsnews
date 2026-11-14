@@ -1221,3 +1221,24 @@ test('studio: MUSC match posts — MATCHDAY, FULL TIME and CONFIRMED XI in forma
     assert.ok(png.length > 5000, template);
   }
 });
+
+test('photos: the people in a story are found by name, and other outlets in the feeds supply their picture', async () => {
+  const { subjectQueries, poolMatches } = await import('../lib/studio/photos.js');
+  assert.deepEqual(subjectQueries({ title: "India's Sooryavanshi becomes youngest captain in men's T20 history", sport: 'cricket' }), ['Sooryavanshi cricketer']);
+  assert.deepEqual(subjectQueries({ title: 'Kumamoto Masters Japan: Lakshya Sen reaches his third final', sport: 'badminton' }), ['Lakshya Sen']);
+  const pool = [
+    { title: 'Vaibhav Sooryavanshi named captain at 15', link: 'https://sportstar.example/a', image: 'https://img.example/a.jpg', source: 'Sportstar' },
+    { title: 'Lakshya Sen into the final', link: 'https://news.google.com/rss/articles/x', source: 'G' },
+    { title: 'Unrelated cricket story', link: 'https://x.example/b', image: 'https://img.example/b.jpg' },
+  ];
+  const m = await poolMatches({ title: "India's Sooryavanshi becomes youngest captain in men's T20 history", sport: 'cricket', link: 'https://news.google.com/rss/articles/y' }, pool);
+  assert.deepEqual(m.map((x) => x.source), ['Sportstar']);
+  assert.deepEqual(await poolMatches({ title: 'Lakshya Sen reaches final', sport: 'badminton' }, pool), [], 'a Google link with no picture is no help');
+});
+
+test('news: a story keeps its own sport when a search feed was for another', async () => {
+  const { mergeNews } = await import('../lib/feeds.js');
+  const now = Date.now();
+  const items = mergeNews([{ feed: { name: 'Google News', url: 'https://news.google.com/rss/search?q=badminton', sport: 'badminton' }, items: [{ title: "India's Sooryavanshi becomes youngest captain in men's T20 cricket history - NST", link: 'https://x', published: new Date(now).toISOString(), summary: '' }] }], now);
+  assert.equal(items[0].sport, 'cricket');
+});
