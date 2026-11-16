@@ -929,7 +929,7 @@ test('studio: every kind has its own layout, with alternatives on the desk', asy
   const n = (title, type, words = {}) => ({ brand: b.tsb, type, story: { kind: 'news', title }, words: { headline: title, ...words }, key: title, classic: true });
   // news posts come in the page's 2026 design (INDIA. TWICE ON THE PODIUM.), the rest in the house post
   for (const [t, type] of [['PARUL CHAUDHARY BRONZE.', 'medal'], ['DOUBLE PODIUM.', 'medal'], ['15,000 ODI RUNS.', 'milestone'], ['MANCHESTER CITY FOUND GUILTY.', 'breaking']]) assert.equal(pickTemplate({ ...n(t, type), classic: false }), 'tsb-headline', t);
-  assert.equal(pickTemplate({ ...n('“A quote”', 'quote'), classic: false }), 'tsb-binge');
+  assert.equal(pickTemplate({ ...n('“A quote”', 'quote'), classic: false }), 'tsb-headline', 'every TSB news post uses the 2026 design');
   assert.match(pickTemplate(n('PARUL CHAUDHARY BRONZE.', 'medal', { accent: 'bronze' })), /^tsb-medal-(top|bottom)$/);
   assert.equal(pickTemplate(n('DOUBLE PODIUM.', 'medal')), 'tsb-phrase');
   assert.equal(pickTemplate(n('15,000 ODI RUNS.', 'milestone')), 'tsb-number');
