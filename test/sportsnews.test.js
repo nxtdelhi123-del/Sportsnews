@@ -1258,3 +1258,11 @@ test('photos: ESPN agency photos only when the caption shows the person, in the 
   const list = await espnPhotos('Lakshya Sen', { who: 'Lakshya Sen', tone: toneOf(story) });
   assert.deepEqual(list.map((x) => x.url), ['https://a/3b.jpg', 'https://a/2b.jpg'], 'the opponent shot and the unrelated "peer" are left out; the happy photo first');
 });
+
+test('a story with rows of label and value is drawn as a fact card', async () => {
+  const { pickTemplate, TEMPLATES } = await import('../lib/studio/templates.js');
+  const { BRANDS } = await import('../lib/studio/score.js');
+  const pack = { brand: BRANDS.tsb, type: 'news', story: { kind: 'news', sport: 'cricket' }, words: { headline: 'Most runs this series.', rows: [{ tag: '1', label: 'A', value: '312', hot: true }, { tag: '2', label: 'B', value: '287' }] }, assets: {} };
+  assert.equal(pickTemplate(pack), 'tsb-facts');
+  assert.ok(TEMPLATES['tsb-facts'](pack, 'tall'));
+});
