@@ -57,7 +57,7 @@ test('calendar: 30 min before a result slot, the brief and a matching draft with
   const out = await cal.runCalendar({ now: at('2026-11-23T03:05:00Z'), ...deps });
   assert.deepEqual(out.errors, []);
   assert.deepEqual(out.briefs, ['2026-11-23T09:00']);
-  assert.match(sent('sendMessage')[0].text, /^🗓 9:00 AM slot/);
+  assert.ok(sent('sendMessage').some((m) => /^🗓 9:00 AM slot/.test(m.text)));
   const photo = sent('sendPhoto')[0];
   assert.match(photo.caption, /^🗓 For 9:00 AM/);
   assert.match(photo.caption, /New Zealand/, 'the story the brief names beats a bigger unrelated one');
@@ -94,7 +94,7 @@ test('calendar: the night before, a list of what tomorrow needs from people; the
   const out = await cal.runCalendar({ now: at('2026-11-22T16:31:00Z'), ...deps }); // 10:01 PM IST, 22 Nov
   assert.deepEqual(out.notices, ['digest 2026-11-23']);
   const text = sent('sendMessage')[0].text;
-  assert.match(text, /^📋 Tomorrow \(Monday, 23 Nov\)/);
+  assert.match(text, /^📋 Tomorrow, Monday, 23 Nov: 4 posts need/);
   assert.match(text, /8:00 PM · Reel \(Editor\): a reel to cut/);
   assert.doesNotMatch(text, /9:00 AM/, 'the result slot is the bot’s job');
   const h = await cal.runCalendar({ now: at('2026-11-23T04:05:00Z'), ...deps }); // 9:35 AM IST
@@ -117,4 +117,19 @@ test('calendar: a photo sent as a reply to a brief is lined up for that slot; a 
   assert.equal((await cal.scheduleDraft(draft.id, at('2026-11-23T06:41:00Z'))).ok, true);
   const png = await cal.receiveUpload({ message_id: 6, document: { file_id: 'x', mime_type: 'image/png' } });
   assert.match(png.text, /JPEG/);
+});
+
+test('calendar: after midnight the coming day is still today, and a missed night-before list is caught up once', async () => {
+  assert.equal(cal.upcomingDay(at('2026-11-22T20:00:00Z')), '2026-11-23'); // 1:30 AM IST, 23 Nov
+  assert.equal(cal.upcomingDay(at('2026-11-23T03:00:00Z')), '2026-11-24'); // 8:30 AM IST
+  assert.match(cal.digestText('2026-11-23', SLOTS, at('2026-11-22T20:00:00Z')), /^📋 Today, Monday, 23 Nov/);
+  const out = await cal.runCalendar({ now: at('2026-11-23T01:00:00Z'), ...deps }); // 6:30 AM IST, no list sent last night
+  assert.deepEqual(out.notices, ['digest 2026-11-23 (catch-up)']);
+  assert.match(sent('sendMessage')[0].text, /Catching up/);
+  const again = await cal.runCalendar({ now: at('2026-11-23T01:01:00Z'), ...deps });
+  assert.deepEqual(again.notices, [], 'only once');
+  // Late in the day only the slots still ahead are listed.
+  const late = cal.digestText('2026-11-23', SLOTS, at('2026-11-23T13:00:00Z')); // 6:30 PM IST
+  assert.match(late, /^📋 Today, Monday, 23 Nov: 1 post needs/);
+  assert.doesNotMatch(late, /12:30 PM/);
 });
