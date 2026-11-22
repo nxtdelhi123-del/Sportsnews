@@ -7,6 +7,7 @@ import path from 'node:path';
 import { renderPack, badgeData, dataUri } from '../lib/studio/render.js';
 import { flagUrl } from '../lib/studio/flags.js';
 import { polishHero } from '../lib/studio/sharpen.js';
+import { imageSize } from '../lib/studio/photos.js';
 import tsb from '../lib/studio/brands/tsb.js';
 
 const [, , input, outDir, photoDir = '.'] = process.argv;
@@ -38,6 +39,18 @@ for (const ex of examples) {
     homeFlag: await flagOf(w.home?.nation),
     awayFlag: await flagOf(w.away?.nation),
   };
+  // a cut-out is a transparent PNG, used as it is (no sharpening, which would flatten its alpha)
+  if (ex.cutout) {
+    const buf = await readFile(path.isAbsolute(ex.cutout) ? ex.cutout : path.join(photoDir, ex.cutout));
+    assets.cutout = `data:image/png;base64,${buf.toString('base64')}`;
+    const d = imageSize(assets.cutout);
+    assets.cutoutAspect = d ? d.w / d.h : 0.8;
+  }
+  // series strips: one photo and one pair of flags per band
+  if (w.strips) {
+    assets.strips = await Promise.all((ex.strips || []).map(hero));
+    assets.stripFlags = await Promise.all(w.strips.map(async (b) => [await flagOf(b.home?.nation), await flagOf(b.away?.nation)]));
+  }
   const pack = { brand: tsb, type: ex.type || 'news', story: { kind: 'news', title: w.headline }, words: w, assets };
   const { png } = await renderPack(pack, { template: ex.template, size: ex.size || 'tall' });
   const file = path.join(outDir, `${ex.id}.png`);

@@ -33,5 +33,5 @@ test('headlines never leave a tiny word alone on a line', () => {
 test('the desk offers the brand-kit layouts', () => {
   assert.ok(templateOptions({ brand: tsb, type: 'news', story: { kind: 'news' }, words: { headline: 'X.' } }).includes('tsb-breaking'));
   assert.ok(templateOptions({ brand: tsb, type: 'result', story: { kind: 'match' }, words: {} }).includes('tsb-scoreline'));
-  assert.equal(Object.keys(TSB_KIT_TEMPLATES).length, 10);
+  assert.equal(Object.keys(TSB_KIT_TEMPLATES).length, 13);
 });

@@ -364,6 +364,110 @@
         "photoPos": "center 0%",
         "topBlend": 0.02
       }
+    },
+    {
+      "id": "12-cutout-lakshya",
+      "template": "tsb-cutout",
+      "cutout": "lakshya-cut.png",
+      "sources": "Sportstar, Indian Express (19 Nov 2026); photo ESPN, background removed",
+      "words": {
+        "headline": "12 WINS IN A ROW.",
+        "eyebrowLine": "LAKSHYA SEN",
+        "ghost": "12",
+        "kicker": "INTO THE HONG KONG OPEN QUARTER-FINALS",
+        "eyebrow": "HONG KONG OPEN · 19 NOV",
+        "source": "Sportstar",
+        "credit": "ESPN",
+        "stats": [
+          {
+            "label": "Beat Rasmus Gemke",
+            "value": "21-11, 21-18"
+          },
+          {
+            "label": "World Tour Finals",
+            "value": "QUALIFIED"
+          }
+        ]
+      }
+    },
+    {
+      "id": "13-photo-first-series",
+      "template": "tsb-photo",
+      "photo": "ind-nz-5th-odi-celebration.jpg",
+      "sources": "Outlook India, ESPNcricinfo, Al Jazeera (15 Nov 2026); photo AP via The Pioneer",
+      "words": {
+        "headline": "SERIES SEALED IN NEW ZEALAND.",
+        "kicker": "INDIA WIN THE ODI SERIES 3-1",
+        "eyebrow": "NZ V IND · 5TH ODI",
+        "status": "Confirmed",
+        "source": "ESPNcricinfo",
+        "credit": "AP",
+        "photoPos": "center 35%"
+      }
+    },
+    {
+      "id": "14-series-strip-nz",
+      "template": "tsb-strip",
+      "strips": [
+        "nz-ind-4th-odi-henry.jpg",
+        "ind-nz-5th-odi-wicket.jpg",
+        "ind-nz-series-winners.jpg"
+      ],
+      "sources": "Al Jazeera (4th ODI, 13 Nov); Outlook India, Kuwait Times (5th ODI, 15 Nov); photos Getty via Al Jazeera, Kuwait Times, Outlook India",
+      "words": {
+        "headline": "HOW INDIA WON IT 3-1.",
+        "eyebrow": "NZ V IND · ODI SERIES",
+        "source": "ESPNcricinfo · Al Jazeera",
+        "credit": "Getty · AP · Outlook",
+        "strips": [
+          {
+            "label": "4th ODI · 13 Nov",
+            "home": {
+              "name": "New Zealand",
+              "code": "NZ",
+              "nation": "New Zealand"
+            },
+            "away": {
+              "name": "India",
+              "code": "IND",
+              "nation": "India"
+            },
+            "result": "NZ won by 244 runs",
+            "photoPos": "center 30%"
+          },
+          {
+            "label": "5th ODI · 15 Nov",
+            "home": {
+              "name": "New Zealand",
+              "code": "NZ",
+              "nation": "New Zealand"
+            },
+            "away": {
+              "name": "India",
+              "code": "IND",
+              "nation": "India"
+            },
+            "result": "India won by 22 runs",
+            "photoPos": "center 35%"
+          },
+          {
+            "label": "Series",
+            "home": {
+              "name": "India",
+              "code": "IND",
+              "nation": "India",
+              "score": 3
+            },
+            "away": {
+              "name": "New Zealand",
+              "code": "NZ",
+              "nation": "New Zealand",
+              "score": 1
+            },
+            "photoPos": "center 40%"
+          }
+        ]
+      }
     }
   ]
 }

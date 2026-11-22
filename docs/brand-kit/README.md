@@ -47,6 +47,20 @@ on each line and a soft cast shadow. No extruded sides (they hurt legibility at 
   stats. Set `photoPos` ("center 15%", "62% 30%") to keep heads in frame.
 - Credit every photo (`credit`) and name the source (`source`) on the post.
 
+## Where the 3D comes from (Sports Gully study, 22 Nov)
+Their letters are flat. The depth comes from the athlete cut out and standing in front of the
+type, a glow behind them, and big stroked numerals in the back. `tsb-cutout` does this with our
+copper leaf, plus a bevel highlight and a short offset shadow on the letters. Use it for the
+biggest story of the day; alternate type-led cards with `tsb-photo` so neighbouring grid tiles
+differ.
+
+## Captions and collabs
+- 40–60 words: the news in line 1, 2–3 short factual lines, then "Status · Source", the photo
+  credit, and exactly 5 hashtags ending #TheSportsBinge.
+- No collab posts by default. The only exceptions are MUFC for Manchester United topics and
+  NXT for esports topics.
+- Content ideas: `content-calendar-prompt.md` in the project's brand-kit folder.
+
 ## Templates
 All 3:4 (1080 × 1440), registered in `lib/studio/templates.js`, so the Studio and
 `/api/studio/render?template=…` can use them. Examples: `examples.json` →
@@ -66,6 +80,9 @@ All 3:4 (1080 × 1440), registered in `lib/studio/templates.js`, so the Studio a
 | LIVE cover | `tsb-live` | headline, updated, updates [{time, text}] |
 | Carousel cover | `tsb-breaking` with `swipe: true` | as breaking |
 | Carousel inner slide | `tsb-slide` | n, of, label, headline, body, stats |
+| Cut-out headline | `tsb-cutout` | headline, eyebrowLine, ghost (big stroked numeral), kicker, stats; needs `assets.cutout` (transparent PNG) |
+| Photo-first | `tsb-photo` | headline, kicker, status; the photo fills the frame |
+| Series strip | `tsb-strip` | headline, strips [{label, home, away, result or scores}] with one photo per band in `assets.strips` |
 | Medal posts (existing) | `tsb-headline` | headline ending GOLD/SILVER/BRONZE, podium |
 
 Every number on a poster comes from `words`; the templates never invent or fill one in.
