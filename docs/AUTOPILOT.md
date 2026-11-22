@@ -50,6 +50,28 @@ no model answers, only stories scoring 8+ go out on the rules alone and the rest
 next run. Without any AI key the rules decide, and a sport and post type the editor has skipped three
 times without ever posting is held back.
 
+## The content calendar (`lib/studio/calendar.js`)
+
+The same one-minute run also works through the Sports Binge rows of the content calendar
+(`lib/studio/calendar-data.js`, made from the spreadsheet by
+`python3 -I scripts/calendar-from-xlsx.py calendar.xlsx`; times are IST). Nothing goes to
+Instagram without the editor's tap.
+
+- **10 PM the night before** (`CALENDAR_DIGEST_TIME`): a list of tomorrow's posts that need
+  something from people (reels, carousels, research pieces, the editor's own slots, anything
+  marked "Needs approval"). `/tomorrow` in the chat shows it any time.
+- **3 hours before** each of those slots (`CALENDAR_HEADSUP_HOURS`): a heads-up with the brief.
+- **30 minutes before every slot** (`CALENDAR_LEAD_MINUTES`): the brief. For result, data-card and
+  main-story slots the bot also sends its best fresh story (preferring the one the brief names)
+  as a draft with **🕒 Post at 9:00 AM**, **✅ Post now** and **✖ Skip**.
+- **At the slot's time**: queued posts publish. Before Instagram is connected, the bot sends
+  "Time to post" instead, and the 🕒 button reads **⏰ Remind me at …**.
+- **The team's own posts**: send the finished image to the bot as a photo (or a JPEG file for
+  full quality) with the caption, as a reply to the slot's brief. It comes back with the same
+  buttons. A text reply to it sets or replaces the caption.
+- **Match results** don't wait for a slot: they go out the moment the score is final, as
+  before, and no longer count against the daily cap (`AUTOPILOT_RESULTS_OVER_CAP=0` to undo).
+
 ## One-time setup (about 10 minutes)
 
 1. **Store:** Vercel → Project → Storage → Create → **Upstash for Redis** (free), connected to this
