@@ -81,7 +81,15 @@ If any fails, the story comes as a normal draft with the reason on it.
 **In the Telegram chat:** `/pause` stops auto-posting (everything waits for your tap), `/resume`
 starts it again, `/status` shows what is on. `AUTOPOST=off` in Vercel switches it off entirely.
 
-**WhatsApp alerts (free, `lib/studio/whatsapp.js`).** Through CallMeBot: on your phone, add
+**WhatsApp through Meta's Cloud API (first choice, `lib/studio/whatsapp.js`).** The same sender
+as the MUSC delivery bot: the Meta app's free test number. In Vercel: `WA_TOKEN` (the system
+user's permanent token), `WA_PHONE_NUMBER_ID`, `WA_TO` (the editor's number with country code).
+Each draft and auto-post arrives as the full-quality image file, then the caption; the 9 AM plan
+as text. Meta only delivers within 24 hours of the editor's last message to that number, so
+reply to the chat once a day; when the window is closed the bot sends one `hello_world`
+template that day as a reminder. `/whatsapp` in Telegram sends a test.
+
+**WhatsApp through CallMeBot (fallback, text only).** Through CallMeBot: on your phone, add
 CallMeBot's WhatsApp number (from callmebot.com, WhatsApp page) and send it
 "I allow callmebot to send me messages"; it replies with a key. Put `WHATSAPP_PHONE`
 (with country code) and `WHATSAPP_APIKEY` in Vercel. `WHATSAPP_ALERTS`: `p1` (default: every

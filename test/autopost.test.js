@@ -197,3 +197,32 @@ test('live scorecard: an Indian double hundred becomes a story at once, and alwa
   const d = await getJSON(`ap:draft:${out.drafted[0].id}`);
   assert.equal(d.pack.words.headline, '204 OFF 53 BALLS.');
 });
+
+test('whatsapp via Meta Cloud API: the post as a file, then the caption; a closed 24-hour window sends one nudge', async () => {
+  const { sendWhatsapp } = await import('../lib/studio/whatsapp.js');
+  Object.assign(process.env, { WA_TOKEN: 'tok', WA_PHONE_NUMBER_ID: '999', WA_TO: '+91 00000 00000' });
+  try {
+    const sent = [];
+    let fail = false;
+    globalThis.fetch = async (url, init = {}) => {
+      const body = JSON.parse(init.body);
+      sent.push({ url: String(url), auth: init.headers.Authorization, body });
+      if (fail && body.type !== 'template') return new Response(JSON.stringify({ error: { code: 131047, message: 'Re-engagement message' } }), { status: 400 });
+      return new Response(JSON.stringify({ messages: [{ id: 'wamid' }] }));
+    };
+    const out = await sendWhatsapp('Caption here', { imageUrl: 'https://site.test/api/studio/media?id=a&sig=b' });
+    assert.equal(out.via, 'meta');
+    assert.equal(sent[0].url, 'https://graph.facebook.com/v23.0/999/messages');
+    assert.equal(sent[0].auth, 'Bearer tok');
+    assert.equal(sent[0].body.to, '910000000000');
+    assert.deepEqual(sent.map((s) => s.body.type), ['document', 'text']);
+    assert.equal(sent[1].body.text.body, 'Caption here');
+    fail = true;
+    sent.length = 0;
+    await assert.rejects(sendWhatsapp('x'));
+    await assert.rejects(sendWhatsapp('y'));
+    assert.equal(sent.filter((s) => s.body.type === 'template').length, 1, 'one nudge a day');
+  } finally {
+    for (const k of ['WA_TOKEN', 'WA_PHONE_NUMBER_ID', 'WA_TO']) delete process.env[k];
+  }
+});
