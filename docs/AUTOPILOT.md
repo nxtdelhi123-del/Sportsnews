@@ -110,6 +110,8 @@ The same one-minute run also works through the Sports Binge rows of the content 
 `python3 -I scripts/calendar-from-xlsx.py calendar.xlsx`; times are IST). Nothing goes to
 Instagram without the editor's tap.
 
+- **9 AM every day** (`CALENDAR_MORNING_TIME`): the day's whole plan, every post with its time, on
+  Telegram and, once set up, WhatsApp.
 - **10 PM the night before** (`CALENDAR_DIGEST_TIME`): a list of tomorrow's posts that need
   something from people (reels, carousels, research pieces, the editor's own slots, anything
   marked "Needs approval"). `/tomorrow` in the chat shows it any time.
