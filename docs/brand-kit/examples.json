@@ -1,0 +1,473 @@
+{
+  "_note": "Brand-kit example packs. Every fact was checked against the sources listed per example (checked 17-22 Nov 2026). The LIVE example is a layout sample with placeholder text.",
+  "examples": [
+    {
+      "id": "01-breaking-dhoni",
+      "template": "tsb-breaking",
+      "photo": "dhoni-portrait-commons.jpg",
+      "sources": "Chennai Super Kings statement via Hindustan Times, ESPNcricinfo (17 Nov 2026); photo: Wikimedia Commons, RIGI, CC BY 3.0",
+      "words": {
+        "headline": "DHONI CALLS TIME.",
+        "kicker": "RETIRES AS A PLAYER. CSK MENTOR FROM IPL 2027.",
+        "eyebrow": "IPL · 17 NOV 2026",
+        "status": "Confirmed",
+        "source": "CSK statement",
+        "credit": "RIGI, CC BY 3.0",
+        "photoPos": "center 18%"
+      }
+    },
+    {
+      "id": "02-result-saff-final",
+      "template": "tsb-scoreline",
+      "photo": "india-saff-champions.jpg",
+      "sources": "AFC match report; Khel Now; Onmanorama (17 Nov 2026)",
+      "words": {
+        "headline": "THIRD STRAIGHT TITLE.",
+        "kicker": "A RECORD 10TH SAFF CROWN FOR INDIA",
+        "eyebrow": "SAFF CHAMPIONSHIP · FINAL",
+        "label": "FULL TIME · DHAKA",
+        "home": {
+          "name": "India",
+          "nation": "India",
+          "score": 2
+        },
+        "away": {
+          "name": "Pakistan",
+          "nation": "Pakistan",
+          "score": 1
+        },
+        "detail": "INDIA: SUHAIL AHMED BHAT, SANDIP MANDI 88'  ·  PAKISTAN: ALAMGIR GHAZI",
+        "source": "AFC",
+        "credit": "via Khel Now",
+        "photoPos": "center 40%"
+      }
+    },
+    {
+      "id": "03-preview-world-chess",
+      "template": "tsb-matchday",
+      "photo": "gukesh-sindarov.jpg",
+      "sources": "FIDE schedule via World Chess (worldchess.com), The Bridge",
+      "words": {
+        "headline": "THE CROWN ON THE LINE.",
+        "kicker": "WORLD CHESS CHAMPIONSHIP · GAME 1",
+        "eyebrow": "FIDE WORLD CHAMPIONSHIP",
+        "home": {
+          "name": "Gukesh",
+          "nation": "India"
+        },
+        "away": {
+          "name": "Sindarov",
+          "nation": "Uzbekistan"
+        },
+        "when": [
+          {
+            "label": "Date",
+            "value": "TUE 24 NOV"
+          },
+          {
+            "label": "Time (IST)",
+            "value": "7:30 PM"
+          },
+          {
+            "label": "Venue",
+            "value": "GENEVA"
+          }
+        ],
+        "source": "FIDE",
+        "credit": "ESPN",
+        "photoPos": "center 15%"
+      }
+    },
+    {
+      "id": "04-stat-split-rakshitha",
+      "template": "tsb-split",
+      "sources": "Sportstar, Indian Express, The Hindu (19 Nov 2026)",
+      "words": {
+        "headline": "NO. 47 BEATS NO. 4.",
+        "kicker": "RAKSHITHA SREE RAMRAJ, 19, AT THE HONG KONG OPEN",
+        "eyebrow": "BADMINTON · 19 NOV",
+        "split": [
+          {
+            "value": "47",
+            "label": "Rakshitha Sree Ramraj",
+            "note": "World ranking · age 19"
+          },
+          {
+            "value": "4",
+            "label": "Chen Yu Fei",
+            "note": "World ranking · Tokyo Olympic champion"
+          }
+        ],
+        "verdict": "Won 21-18, 24-22 · from 5-15 down in game 2",
+        "source": "Sportstar"
+      }
+    },
+    {
+      "id": "05-data-card-nz-day1",
+      "template": "tsb-facts",
+      "sources": "Sportstar (The Hindu), ESPNcricinfo, Cricbuzz (19 Nov 2026)",
+      "words": {
+        "headline": "FROM 70/5 TO 243/5.",
+        "kicker": "NICHOLLS AND PHILLIPS RESCUE NEW ZEALAND",
+        "eyebrow": "IND V NZ · 1ST TEST · DAY 1",
+        "rows": [
+          {
+            "tag": "NZ",
+            "label": "Henry Nicholls",
+            "note": "221 balls · 12th Test hundred",
+            "value": "113*",
+            "hot": true
+          },
+          {
+            "tag": "NZ",
+            "label": "Glenn Phillips",
+            "note": "182 balls",
+            "value": "94*"
+          },
+          {
+            "tag": "NZ",
+            "label": "6th-wicket stand",
+            "note": "Unbroken",
+            "value": "173"
+          },
+          {
+            "tag": "IND",
+            "label": "Jasprit Bumrah",
+            "note": "Incl. Latham in the first over",
+            "value": "3 wkts"
+          }
+        ],
+        "source": "ESPNcricinfo"
+      }
+    },
+    {
+      "id": "06-quote-srinivasan",
+      "template": "tsb-said",
+      "photo": "dhoni-csk-trophies.jpg",
+      "sources": "CSK statement via Hindustan Times (17 Nov 2026)",
+      "words": {
+        "quote": "There is *no CSK* without MS Dhoni.",
+        "name": "N Srinivasan",
+        "role": "CSK owner · on Dhoni's retirement, 17 Nov",
+        "eyebrow": "IN THEIR WORDS",
+        "status": "Confirmed",
+        "source": "CSK via Hindustan Times",
+        "credit": "ESPNcricinfo",
+        "photoPos": "center 0%",
+        "topBlend": 0.02
+      }
+    },
+    {
+      "id": "07-trade-hardik",
+      "template": "tsb-signing",
+      "photo": "hardik-pandya.jpg",
+      "sources": "ESPNcricinfo, Outlook India (trade announced 11 Nov 2026)",
+      "words": {
+        "headline": "HARDIK TO PUNJAB.",
+        "eyebrow": "IPL 2027 TRADE · 11 NOV",
+        "status": "Confirmed",
+        "from": {
+          "name": "Mumbai Indians"
+        },
+        "to": {
+          "name": "Punjab Kings"
+        },
+        "stats": [
+          {
+            "label": "New fee",
+            "value": "₹18 CR"
+          },
+          {
+            "label": "Was",
+            "value": "₹16.35 CR"
+          },
+          {
+            "label": "In return",
+            "value": "ARSHDEEP"
+          }
+        ],
+        "source": "ESPNcricinfo",
+        "credit": "ESPNcricinfo",
+        "photoPos": "center 12%"
+      }
+    },
+    {
+      "id": "08-spotlight-lakshya",
+      "template": "tsb-spotlight",
+      "photo": "lakshya-sen.jpg",
+      "sources": "Sportstar, Indian Express (19 Nov 2026)",
+      "words": {
+        "name": "Lakshya Sen",
+        "label": "Spotlight",
+        "kicker": "INTO THE HONG KONG OPEN QUARTER-FINALS",
+        "eyebrow": "HONG KONG OPEN · 19 NOV",
+        "stats": [
+          {
+            "label": "Beat Rasmus Gemke",
+            "value": "21-11, 21-18"
+          },
+          {
+            "label": "Winning run",
+            "value": "12",
+            "note": "matches in a row"
+          },
+          {
+            "label": "World Tour Finals",
+            "value": "IN",
+            "note": "spot sealed 18 Nov"
+          }
+        ],
+        "source": "Sportstar",
+        "credit": "ESPN",
+        "photoPos": "62% 30%"
+      }
+    },
+    {
+      "id": "09-medal-tally-asian-games",
+      "template": "tsb-medals",
+      "type": "tally",
+      "sources": "Outlook India, Business Today, Khel Now (2026 tally, 3 Oct 2026); Olympics.com (2023 tally)",
+      "words": {
+        "headline": "85 MEDALS. FOURTH IN ASIA.",
+        "kicker": "INDIA AT THE ASIAN GAMES",
+        "eyebrow": "ASIAN GAMES · FINAL TALLY",
+        "tableLabel": "India",
+        "tally": [
+          {
+            "label": "Aichi-Nagoya 2026",
+            "note": "Finished 4th",
+            "gold": 21,
+            "silver": 27,
+            "bronze": 37,
+            "total": 85,
+            "hot": true
+          },
+          {
+            "label": "Hangzhou 2023",
+            "note": "India's record haul",
+            "gold": 28,
+            "silver": 38,
+            "bronze": 41,
+            "total": 107
+          }
+        ],
+        "source": "Outlook India · Olympics.com"
+      }
+    },
+    {
+      "id": "10-live-sample",
+      "template": "tsb-live",
+      "sources": "SAMPLE: placeholder text, layout only",
+      "words": {
+        "headline": "DEADLINE DAY.",
+        "eyebrow": "SAMPLE · LAYOUT ONLY",
+        "updated": "[time] IST",
+        "updates": [
+          {
+            "time": "[TIME]",
+            "text": "[Newest update: what happened, and who confirmed it]"
+          },
+          {
+            "time": "[TIME]",
+            "text": "[Earlier update, one line]"
+          },
+          {
+            "time": "[TIME]",
+            "text": "[Earlier update, one line]"
+          },
+          {
+            "time": "[TIME]",
+            "text": "[First update of the day]"
+          }
+        ],
+        "source": "Sample"
+      }
+    },
+    {
+      "id": "11-carousel-1-cover",
+      "template": "tsb-breaking",
+      "photo": "dhoni-portrait-commons.jpg",
+      "sources": "CSK statement via Hindustan Times, ESPNcricinfo (17 Nov 2026); photo: Wikimedia Commons, RIGI, CC BY 3.0",
+      "words": {
+        "headline": "DHONI IN NUMBERS.",
+        "kicker": "THE CAPTAIN, THE BATTER, THE MENTOR",
+        "eyebrow": "IPL · CAROUSEL",
+        "flash": "Confirmed",
+        "swipe": true,
+        "source": "CSK · ESPNcricinfo",
+        "credit": "RIGI, CC BY 3.0",
+        "photoPos": "center 18%"
+      }
+    },
+    {
+      "id": "11-carousel-2-captain",
+      "template": "tsb-slide",
+      "sources": "ESPNcricinfo, Hindustan Times (17 Nov 2026)",
+      "words": {
+        "n": 2,
+        "of": 4,
+        "label": "The captain",
+        "headline": "FIVE TITLES.",
+        "body": "Dhoni led Chennai Super Kings to five IPL titles, level with Rohit Sharma for the most by any captain. Nobody has captained more IPL matches, or won more.",
+        "stats": [
+          {
+            "label": "Matches as captain",
+            "value": "235"
+          },
+          {
+            "label": "Wins as captain",
+            "value": "136"
+          },
+          {
+            "label": "IPL titles",
+            "value": "5"
+          }
+        ],
+        "source": "ESPNcricinfo"
+      }
+    },
+    {
+      "id": "11-carousel-3-batter",
+      "template": "tsb-slide",
+      "sources": "ESPNcricinfo, Hindustan Times (17 Nov 2026)",
+      "words": {
+        "n": 3,
+        "of": 4,
+        "label": "The batter",
+        "headline": "5,439 RUNS.",
+        "body": "He finishes with 5,439 runs from 278 IPL matches. His last game was in IPL 2025; injury kept him out of the whole 2026 season.",
+        "stats": [
+          {
+            "label": "IPL runs",
+            "value": "5,439"
+          },
+          {
+            "label": "IPL matches",
+            "value": "278"
+          }
+        ],
+        "source": "ESPNcricinfo"
+      }
+    },
+    {
+      "id": "11-carousel-4-next",
+      "template": "tsb-slide",
+      "photo": "dhoni-csk-trophies.jpg",
+      "sources": "CSK statement via Hindustan Times (17 Nov 2026)",
+      "words": {
+        "n": 4,
+        "of": 4,
+        "label": "What's next",
+        "headline": "CSK MENTOR.",
+        "body": "CSK announced on 17 Nov that Dhoni becomes the franchise's mentor from IPL 2027. “There is no CSK without MS Dhoni,” said owner N Srinivasan.",
+        "source": "CSK statement",
+        "photoPos": "center 0%",
+        "topBlend": 0.02
+      }
+    },
+    {
+      "id": "12-cutout-lakshya",
+      "template": "tsb-cutout",
+      "cutout": "lakshya-cut.png",
+      "sources": "Sportstar, Indian Express (19 Nov 2026); photo ESPN, background removed",
+      "words": {
+        "headline": "12 WINS IN A ROW.",
+        "eyebrowLine": "LAKSHYA SEN",
+        "ghost": "12",
+        "kicker": "INTO THE HONG KONG OPEN QUARTER-FINALS",
+        "eyebrow": "HONG KONG OPEN · 19 NOV",
+        "source": "Sportstar",
+        "credit": "ESPN",
+        "stats": [
+          {
+            "label": "Beat Rasmus Gemke",
+            "value": "21-11, 21-18"
+          },
+          {
+            "label": "World Tour Finals",
+            "value": "QUALIFIED"
+          }
+        ]
+      }
+    },
+    {
+      "id": "13-photo-first-series",
+      "template": "tsb-photo",
+      "photo": "ind-nz-5th-odi-celebration.jpg",
+      "sources": "Outlook India, ESPNcricinfo, Al Jazeera (15 Nov 2026); photo AP via The Pioneer",
+      "words": {
+        "headline": "SERIES SEALED IN NEW ZEALAND.",
+        "kicker": "INDIA WIN THE ODI SERIES 3-1",
+        "eyebrow": "NZ V IND · 5TH ODI",
+        "status": "Confirmed",
+        "source": "ESPNcricinfo",
+        "credit": "AP",
+        "photoPos": "center 35%"
+      }
+    },
+    {
+      "id": "14-series-strip-nz",
+      "template": "tsb-strip",
+      "strips": [
+        "nz-ind-4th-odi-henry.jpg",
+        "ind-nz-5th-odi-wicket.jpg",
+        "ind-nz-series-winners.jpg"
+      ],
+      "sources": "Al Jazeera (4th ODI, 13 Nov); Outlook India, Kuwait Times (5th ODI, 15 Nov); photos Getty via Al Jazeera, Kuwait Times, Outlook India",
+      "words": {
+        "headline": "HOW INDIA WON IT 3-1.",
+        "eyebrow": "NZ V IND · ODI SERIES",
+        "source": "ESPNcricinfo · Al Jazeera",
+        "credit": "Getty · AP · Outlook",
+        "strips": [
+          {
+            "label": "4th ODI · 13 Nov",
+            "home": {
+              "name": "New Zealand",
+              "code": "NZ",
+              "nation": "New Zealand"
+            },
+            "away": {
+              "name": "India",
+              "code": "IND",
+              "nation": "India"
+            },
+            "result": "NZ won by 244 runs",
+            "photoPos": "center 30%"
+          },
+          {
+            "label": "5th ODI · 15 Nov",
+            "home": {
+              "name": "New Zealand",
+              "code": "NZ",
+              "nation": "New Zealand"
+            },
+            "away": {
+              "name": "India",
+              "code": "IND",
+              "nation": "India"
+            },
+            "result": "India won by 22 runs",
+            "photoPos": "center 35%"
+          },
+          {
+            "label": "Series",
+            "home": {
+              "name": "India",
+              "code": "IND",
+              "nation": "India",
+              "score": 3
+            },
+            "away": {
+              "name": "New Zealand",
+              "code": "NZ",
+              "nation": "New Zealand",
+              "score": 1
+            },
+            "photoPos": "center 40%"
+          }
+        ]
+      }
+    }
+  ]
+}
