@@ -7,7 +7,8 @@ phone on Telegram with two buttons:
 - **✅ Post now** publishes it to Instagram straight away and replies with the link.
 - **✖ Skip** drops it.
 
-Nothing goes to Instagram without your tap.
+Nothing goes to Instagram without your tap, except breaking news an official source has
+confirmed (below).
 
 **Expected time from a story appearing in the feeds to the draft on your phone:** about
 2–6 minutes. The trigger runs every 1–2 minutes, the feeds are cached for up to 4
@@ -49,6 +50,58 @@ reason, which the draft shows as 🧠. Stories it turns down are not asked about
 no model answers, only stories scoring 8+ go out on the rules alone and the rest wait for the
 next run. Without any AI key the rules decide, and a sport and post type the editor has skipped three
 times without ever posting is held back.
+
+## Confirmed breaking news posts on its own (`lib/studio/autopost.js`)
+
+The editor's rule since 24 Nov 2026: breaking news whose facts are **Confirmed by an official
+(T1) source** publishes straight away and the bot tells you afterwards ("⚡ Posted on its own",
+with the Instagram link). Reported, Developing and Unverified stories still arrive as drafts
+for your tap.
+
+**Official sources.** `OFFICIAL_SITES` in `lib/sources.js`: ICC, BCCI, IPL, WPL, Formula 1, FIA,
+FIFA, UEFA, Premier League, AIFF, ISL, Manchester United, NBA, FIBA, UFC, ATP, WTA, ITF, the four
+Grand Slams, FIH, Hockey India, PPA Tour, USA Pickleball, Major League Pickleball, IOC, OCA,
+IOA, World Athletics, BWF, FIDE, ISSF, World Archery, UWW, ITTF, WTT, PSA and Pro Kabaddi. The
+newsroom reads them through Formula 1's own feed and Google News searches limited to these
+sites (`OFFICIAL_FEEDS`); a story on one of them shows as **Confirmed** and as "Confirmed by …".
+
+**A story posts on its own only when all of these hold:**
+- it is on an official site (match results only with `AUTOPOST_RESULTS=1`);
+- the editor brain (Gemini, free) chose it as P1 or P2 (`AUTOPOST_PRIORITIES`), never the rules alone;
+- the brain wrote a headline in which every name and number is in the story's own words;
+- it was published less than `AUTOPOST_MAX_AGE_MIN` (90) minutes ago and is not a preview,
+  opinion, list, question, fixture, gallery or section page;
+- the photo is sharp and certainly of the story: its own picture, or one captioned with a full
+  name from it (a surname-only match is flagged "📷 loose match" on drafts and never auto-posts);
+- Instagram is connected, auto-posting is not paused, at most `AUTOPOST_DAILY_CAP` (8) a day and
+  `AUTOPOST_GAP_MIN` (20) minutes apart.
+
+If any fails, the story comes as a normal draft with the reason on it.
+
+**In the Telegram chat:** `/pause` stops auto-posting (everything waits for your tap), `/resume`
+starts it again, `/status` shows what is on. `AUTOPOST=off` in Vercel switches it off entirely.
+
+**WhatsApp alerts (free, `lib/studio/whatsapp.js`).** Through CallMeBot: on your phone, add
+CallMeBot's WhatsApp number (from callmebot.com, WhatsApp page) and send it
+"I allow callmebot to send me messages"; it replies with a key. Put `WHATSAPP_PHONE`
+(with country code) and `WHATSAPP_APIKEY` in Vercel. `WHATSAPP_ALERTS`: `p1` (default: every
+auto-post and every P1 draft), `autopost`, `all` or `off`. Telegram stays the place to tap Post.
+
+**Hundreds and five-fors from the live scorecard (`lib/studio/live-milestones.js`).** Every
+minute the autopilot reads ESPN's live scorecard (ESPNcricinfo data) of every cricket match an
+Indian side is playing, at any level (India, India A, U19, Women). An Indian batter reaching
+100, 150, 200, 250 or 300, or an Indian bowler taking 5+ wickets, becomes a draft at once with
+a headline from the numbers ("204 OFF 53 BALLS."). No record is claimed from the scorecard. These
+skip the brain and the daily cap, so they always reach you; they post on their own only with
+`AUTOPOST_RESULTS=1`. Added after Sooryavanshi's 28-ball hundred and 53-ball 204 (24 Nov) went
+without a draft: the headlines about it came late, were judged too junior, and several were
+filed under sport "other". Indian cricketers' names and "double ton", "List A" now classify as
+cricket, and youth/junior stories with a hundred or record are no longer filtered out.
+
+**Design variety.** News layouts rotate between `tsb-headline`, `tsb-binge` and `tsb-verdict`,
+never repeating the last two, so neighbouring posts differ.
+
+`/api/health` shows `autopost: { instagram, whatsapp, brain, off }` as yes/no.
 
 ## The content calendar (`lib/studio/calendar.js`)
 

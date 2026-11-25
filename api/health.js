@@ -29,6 +29,8 @@ export default async function handler(req, res) {
     now: new Date().toISOString(),
     nextUpdateAt: new Date(nextSlot()).toISOString(),
     region: process.env.VERCEL_REGION || null,
+    // yes/no only, never the values
+    autopost: { instagram: !!(process.env.IG_TSB_USER_ID && process.env.IG_TSB_TOKEN), whatsapp: !!(process.env.WHATSAPP_PHONE && process.env.WHATSAPP_APIKEY), brain: !!(process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY), off: String(process.env.AUTOPOST || '').toLowerCase() === 'off' },
     sources: { espnCompetitions: ESPN_LEAGUES.length, sofascoreSports: sofascoreOn() ? Object.keys(SOFA_SPORTS).length : 'off', sportsDbSports: Object.keys(TSDB_SPORTS).length, newsFeeds: NEWS_FEEDS.length },
   };
   if (req.query?.deep) {
