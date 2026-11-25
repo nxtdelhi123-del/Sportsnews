@@ -25,7 +25,7 @@ let calls;
 beforeEach(() => {
   resetMemoryStore();
   pollPolicy.delay = 0;
-  Object.assign(process.env, { AUTOPILOT_SECRET: 's3cret', TELEGRAM_BOT_TOKEN: 'T', TELEGRAM_CHAT_ID: '42', PUBLIC_URL: 'https://site.test', IG_TSB_USER_ID: '1784', IG_TSB_TOKEN: 'tok' });
+  Object.assign(process.env, { AUTOPILOT_SECRET: 's3cret', TELEGRAM_BOT_TOKEN: 'T', TELEGRAM_CHAT_ID: '42', PUBLIC_URL: 'https://site.test', IG_TSB_USER_ID: '1784', IG_TSB_TOKEN: 'tok', CALENDAR_MORNING_TIME: 'off' });
   calls = [];
   let n = 100;
   globalThis.fetch = async (url, init = {}) => {
@@ -132,4 +132,12 @@ test('calendar: after midnight the coming day is still today, and a missed night
   const late = cal.digestText('2026-11-23', SLOTS, at('2026-11-23T13:00:00Z')); // 6:30 PM IST
   assert.match(late, /^📋 Today, Monday, 23 Nov: 1 post needs/);
   assert.doesNotMatch(late, /12:30 PM/);
+});
+
+test('calendar: the 9 AM plan lists every post today, once, on Telegram and WhatsApp', async () => {
+  const { morningText } = await import('../lib/studio/calendar.js');
+  const text = morningText('2026-11-26');
+  assert.match(text, /^☀️ The Sports Binge, today's posts \(Thursday, 26 Nov\): \d+/);
+  assert.match(text, /9:00 AM · Result/);
+  assert.equal(morningText('2020-01-01'), '');
 });
