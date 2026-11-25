@@ -143,14 +143,14 @@ test('autopilot: news layouts rotate so neighbouring posts differ', async () => 
   assert.equal(new Set(tpls).size, 3, tpls.join(','));
 });
 
-test('whatsapp: alerts for auto-posts and P1 drafts by default, when set up', async () => {
+test('whatsapp: alerts for auto-posts and drafts, when set up', async () => {
   assert.equal(wantsWhatsapp({ autoposted: true }), false, 'off until set up');
   Object.assign(process.env, { WHATSAPP_PHONE: '+910000000000', WHATSAPP_APIKEY: 'k' });
   assert.equal(wantsWhatsapp({ autoposted: true }), true);
+  assert.equal(wantsWhatsapp({ priority: 'P2' }), true, 'every draft by default');
+  process.env.WHATSAPP_ALERTS = 'p1';
   assert.equal(wantsWhatsapp({ priority: 'P1' }), true);
   assert.equal(wantsWhatsapp({ priority: 'P2' }), false);
-  process.env.WHATSAPP_ALERTS = 'all';
-  assert.equal(wantsWhatsapp({ priority: 'P2' }), true);
   delete process.env.WHATSAPP_ALERTS;
   await run([cand(official)]);
   const wa = calls.filter((c) => c.url.includes('api.callmebot.com'));
@@ -167,4 +167,33 @@ test('brain headline: kept only when every fact is in the story', async () => {
   assert.equal(safeHeadline('BAVUMA BACK FOR 3 TESTS.', st), '', 'a number not in the story');
   assert.equal(safeHeadline('IS THIS THE END?', st), '');
   assert.equal(safeHeadline(null, st), '');
+});
+
+test('live scorecard: an Indian double hundred becomes a story at once, and always reaches the phone', async () => {
+  const { milestonesIn, storyFrom } = await import('../lib/studio/live-milestones.js');
+  const bat = (id, name, runs, balls, outs, extra = {}) => ({ athlete: { id, displayName: name }, linescores: [{ period: 2, linescores: [{ statistics: { categories: [{ stats: Object.entries({ runs, ballsFaced: balls, batted: 1, outs, fours: 7, sixes: 28, ...extra }).map(([name, value]) => ({ name, value })) }] } }] }] });
+  const summary = {
+    header: { league: { name: 'Indian Premier League' }, competitions: [{ class: { generalClassCard: 'List A' } }] },
+    rosters: [
+      { team: { displayName: 'India A' }, roster: [bat('1', 'Vaibhav Sooryavanshi', 204, 53, 1), bat('2', 'Other Batter', 40, 30, 1)] },
+      { team: { displayName: 'United Arab Emirates' }, roster: [bat('3', 'UAE Batter', 120, 100, 1)] },
+    ],
+  };
+  const match = { id: '1562353', league: { name: 'DP World Asia Cup Rising Stars' }, link: 'https://x' };
+  const ms = milestonesIn(summary, match);
+  assert.equal(ms.length, 1, 'only Indian players, only milestones');
+  assert.equal(ms[0].mark, 200);
+  const s = storyFrom(ms[0], match, NOW);
+  assert.equal(s.title, 'Vaibhav Sooryavanshi hits a double century for India A against United Arab Emirates');
+  assert.match(s.summary, /made 204 off 53 balls \(7 fours, 28 sixes\).*DP World Asia Cup Rising Stars, List A\./);
+  assert.doesNotMatch(s.summary, /Premier League/, 'the series, not the league id the data was read through');
+  assert.equal(s.headline, '204 OFF 53 BALLS.');
+  assert.equal(ap.statusOf(s), 'Confirmed');
+  // the brain says no to everything; the scorecard story still goes, as a draft for a tap
+  const out = await run([{ ...cand(s), type: 'milestone' }], async () => []);
+  assert.equal(out.drafted.length, 1);
+  assert.equal(out.drafted[0].priority, 'P1');
+  assert.equal(igPublished(), 0, 'scorecard milestones wait for a tap unless AUTOPOST_RESULTS=1');
+  const d = await getJSON(`ap:draft:${out.drafted[0].id}`);
+  assert.equal(d.pack.words.headline, '204 OFF 53 BALLS.');
 });

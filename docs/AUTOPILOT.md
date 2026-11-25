@@ -87,6 +87,17 @@ CallMeBot's WhatsApp number (from callmebot.com, WhatsApp page) and send it
 (with country code) and `WHATSAPP_APIKEY` in Vercel. `WHATSAPP_ALERTS`: `p1` (default: every
 auto-post and every P1 draft), `autopost`, `all` or `off`. Telegram stays the place to tap Post.
 
+**Hundreds and five-fors from the live scorecard (`lib/studio/live-milestones.js`).** Every
+minute the autopilot reads ESPN's live scorecard (ESPNcricinfo data) of every cricket match an
+Indian side is playing, at any level (India, India A, U19, Women). An Indian batter reaching
+100, 150, 200, 250 or 300, or an Indian bowler taking 5+ wickets, becomes a draft at once with
+a headline from the numbers ("204 OFF 53 BALLS."). No record is claimed from the scorecard. These
+skip the brain and the daily cap, so they always reach you; they post on their own only with
+`AUTOPOST_RESULTS=1`. Added after Sooryavanshi's 28-ball hundred and 53-ball 204 (24 Nov) went
+without a draft: the headlines about it came late, were judged too junior, and several were
+filed under sport "other". Indian cricketers' names and "double ton", "List A" now classify as
+cricket, and youth/junior stories with a hundred or record are no longer filtered out.
+
 **Design variety.** News layouts rotate between `tsb-headline`, `tsb-binge` and `tsb-verdict`,
 never repeating the last two, so neighbouring posts differ.
 
