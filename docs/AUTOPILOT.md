@@ -11,8 +11,8 @@ Nothing goes to Instagram without your tap, except breaking news an official sou
 confirmed (below).
 
 **Expected time from a story appearing in the feeds to the draft on your phone:** about
-2–6 minutes. The trigger runs every 1–2 minutes, the feeds are cached for up to 4
-minutes, and writing plus drawing takes about 10 seconds. Publishing after your tap
+2–4 minutes. The trigger runs every 1–2 minutes, headlines are cached for 90 seconds and
+live scores for 60, and writing plus drawing takes about 10 seconds. Publishing after your tap
 takes about 5–15 seconds.
 
 ## What gets sent
